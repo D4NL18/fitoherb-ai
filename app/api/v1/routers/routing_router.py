@@ -81,8 +81,93 @@ def optimize_route(payload: OptimizeRouteRequest):
     )
     result = solver.solve()
 
-    ordered_sequence = result["ordered_sequence"]
+    return _evaluate_ordered_route(
+        payload=payload,
+        ordered_sequence=result["ordered_sequence"],
+        total_distance_km=result["total_distance_km"],
+        fitness_history=result["fitness_history"],
+        points_cities=points_cities,
+        base_city=base_city,
+        durations_sec=durations_sec,
+        distances_m=distances_m,
+        is_temporal_active=is_temporal_active,
+        dep_time_mins=dep_time_mins,
+        avg_service_min=avg_service_min
+    )
 
+@router.post("/recalculate", response_model=OptimizeRouteResponse)
+def recalculate_route(payload: OptimizeRouteRequest):
+    """
+    Recalcula as métricas viárias, horários projetados e rota GeoJSON mantendo rigorosamente
+    a ordem das paradas fornecida na requisição (reordenação manual pelo vendedor).
+    """
+    if not payload.stops:
+        raise HTTPException(status_code=400, detail="É necessário fornecer ao menos uma parada de visita.")
+
+    # 1. Monta coordenadas: Nó 0 é o Depósito/Base, Nós 1..N são as paradas na ordem enviada
+    points = [(payload.depot.lat, payload.depot.lon)] + [(s.lat, s.lon) for s in payload.stops]
+
+    base_city = payload.depot.address.city if payload.depot.address else None
+    points_cities = [base_city or ""]
+    for s in payload.stops:
+        points_cities.append(s.address.city if s.address and s.address.city else (base_city or ""))
+
+    explicit_durations = [
+        s.service_duration_minutes for s in payload.stops
+        if s.service_duration_minutes is not None and s.service_duration_minutes > 0
+    ]
+    dep_time_mins = TrafficPredictor.parse_time_str(payload.departure_time)
+    is_temporal_active = (dep_time_mins is not None) and (len(explicit_durations) > 0)
+
+    if is_temporal_active:
+        avg_service_min = int(round(sum(explicit_durations) / len(explicit_durations)))
+    else:
+        dep_time_mins = None
+        avg_service_min = 0
+
+    # 2. Matrizes OSRM
+    durations_sec, distances_m = osrm_provider.get_matrix(points)
+
+    # 3. Sequência idêntica à ordem recebida das paradas: [1, 2, ..., N]
+    ordered_sequence = list(range(1, len(payload.stops) + 1))
+
+    # Calcula distância viária real acumulada
+    total_dist_m = 0.0
+    prev = 0
+    for node in ordered_sequence:
+        total_dist_m += distances_m[prev][node]
+        prev = node
+    if payload.return_to_depot:
+        total_dist_m += distances_m[prev][0]
+    total_dist_km = round(total_dist_m / 1000.0, 2)
+
+    return _evaluate_ordered_route(
+        payload=payload,
+        ordered_sequence=ordered_sequence,
+        total_distance_km=total_dist_km,
+        fitness_history=[],
+        points_cities=points_cities,
+        base_city=base_city,
+        durations_sec=durations_sec,
+        distances_m=distances_m,
+        is_temporal_active=is_temporal_active,
+        dep_time_mins=dep_time_mins,
+        avg_service_min=avg_service_min
+    )
+
+def _evaluate_ordered_route(
+    payload: OptimizeRouteRequest,
+    ordered_sequence: List[int],
+    total_distance_km: float,
+    fitness_history: List[float],
+    points_cities: List[str],
+    base_city: Optional[str],
+    durations_sec: List[List[float]],
+    distances_m: List[List[float]],
+    is_temporal_active: bool,
+    dep_time_mins: Optional[int],
+    avg_service_min: int
+) -> OptimizeRouteResponse:
     # 4. Constrói a linha do tempo de paradas com relógio real e status de tráfego
     ordered_stops: List[OrderedStopDto] = []
     waypoints_for_geo = [(payload.depot.lat, payload.depot.lon)]
@@ -235,11 +320,11 @@ def optimize_route(payload: OptimizeRouteRequest):
 
     return OptimizeRouteResponse(
         total_time_minutes=round(total_transit_sec / 60.0, 1),
-        total_distance_km=result["total_distance_km"],
+        total_distance_km=total_distance_km,
         stops_count=len(payload.stops),
         ordered_stops=ordered_stops,
         geojson_geometry=geojson,
-        fitness_history=result["fitness_history"],
+        fitness_history=fitness_history,
         departure_clock=TrafficPredictor.format_clock(dep_time_mins) if is_temporal_active else None,
         estimated_finish_clock=TrafficPredictor.format_clock(curr_clock_min) if is_temporal_active else None,
         total_transit_minutes=round(total_transit_sec / 60.0, 1) if is_temporal_active else None,

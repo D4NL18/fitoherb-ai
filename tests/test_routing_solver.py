@@ -289,4 +289,29 @@ def test_route_geometry_feature_collection_legs():
     assert len(leg0["geometry"]["coordinates"]) >= 2
 
 
+def test_recalculate_route_preserves_exact_order():
+    from app.api.v1.routers.routing_router import recalculate_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
 
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base", lat=-12.899, lon=-38.324),
+        stops=[
+            DeliveryStop(id="sb", name="Ponto B", lat=-12.710, lon=-38.120, service_duration_minutes=30),
+            DeliveryStop(id="sa", name="Ponto A", lat=-12.840, lon=-38.250, service_duration_minutes=20),
+            DeliveryStop(id="sc", name="Ponto C", lat=-12.600, lon=-38.000, service_duration_minutes=15)
+        ],
+        departure_time="08:00",
+        return_to_depot=True
+    )
+
+    resp = recalculate_route(payload)
+    visit_stops = [s for s in resp.ordered_stops if s.action == "VISIT"]
+    assert len(visit_stops) == 3
+    assert [s.id for s in visit_stops] == ["sb", "sa", "sc"]
+    assert visit_stops[0].step == 1
+    assert visit_stops[1].step == 2
+    assert visit_stops[2].step == 3
+    assert resp.total_distance_km > 0
+    assert resp.total_time_minutes > 0
+    assert resp.geojson_geometry["type"] == "FeatureCollection"
