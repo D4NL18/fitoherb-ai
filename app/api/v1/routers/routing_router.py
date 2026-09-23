@@ -121,3 +121,48 @@ def export_route_pdf(payload: ExportPdfRequest):
             "Content-Disposition": f"attachment; filename=roteiro_fitoherb_{payload.date.replace('/', '-')}.pdf"
         }
     )
+
+@router.get("/search-address")
+def search_address_proxy(q: str):
+    """
+    Proxy de busca de endereços no Nominatim com User-Agent corporativo homologado,
+    eliminando bloqueios de CORS e restrições de chamadas diretas do navegador.
+    """
+    import urllib.parse
+    import urllib.request
+    import json
+
+    if not q or not q.strip():
+        return []
+
+    encoded = urllib.parse.quote(q.strip())
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=8"
+    req = urllib.request.Request(
+        url, 
+        headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode('utf-8'))
+    except Exception as e:
+        return []
+
+@router.get("/reverse-geocode")
+def reverse_geocode_proxy(lat: float, lon: float):
+    """
+    Proxy de geocodificação reversa no Nominatim com User-Agent corporativo.
+    """
+    import urllib.request
+    import json
+
+    url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&addressdetails=1"
+    req = urllib.request.Request(
+        url, 
+        headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode('utf-8'))
+    except Exception as e:
+        return {}
+
