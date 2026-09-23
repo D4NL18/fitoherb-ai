@@ -272,4 +272,21 @@ def test_optimize_route_temporal_active_with_average_imputation():
         assert s.service_duration_minutes == 40
         assert s.traffic_factor is not None
 
+def test_route_geometry_feature_collection_legs():
+    from app.domains.routing.infrastructure.osrm_provider import osrm_provider
+    waypoints = [
+        (-12.899, -38.324), # Base
+        (-12.840, -38.250), # Ponto 1
+        (-12.710, -38.120)  # Ponto 2
+    ]
+    geojson = osrm_provider.get_route_geometry(waypoints)
+    assert geojson["type"] == "FeatureCollection"
+    assert "features" in geojson
+    assert len(geojson["features"]) == 2 # 2 trechos
+    leg0 = geojson["features"][0]
+    assert leg0["properties"]["leg_index"] == 0
+    assert leg0["properties"]["color"].startswith("#")
+    assert len(leg0["geometry"]["coordinates"]) >= 2
+
+
 

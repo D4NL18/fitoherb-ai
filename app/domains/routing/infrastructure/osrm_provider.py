@@ -152,19 +152,35 @@ class OSRMProvider:
         geo_cache.set_matrix(points, durations, distances)
         return durations, distances
 
+    ROUTE_LEG_COLORS = [
+        "#2563eb",  # Trecho 1: Azul Real Vibrante
+        "#d97706",  # Trecho 2: Âmbar / Laranja
+        "#7c3aed",  # Trecho 3: Violeta / Roxo
+        "#059669",  # Trecho 4: Verde Esmeralda
+        "#dc2626",  # Trecho 5: Vermelho Carmim
+        "#0891b2",  # Trecho 6: Azul Petróleo / Ciano
+        "#ea580c",  # Trecho 7: Laranja Queimado
+        "#4f46e5",  # Trecho 8: Índigo
+        "#c026d3",  # Trecho 9: Magenta
+        "#0d9488",  # Trecho 10: Teal
+        "#65a30d",  # Trecho 11: Verde Lima
+        "#475569"   # Trecho Retorno à Base: Ardósia
+    ]
+
     def get_route_geometry(self, waypoints: List[Tuple[float, float]]) -> Dict[str, Any]:
         """
-        Retorna GeoJSON com coordenadas curva a curva para renderização no Leaflet.
+        Retorna GeoJSON FeatureCollection com coordenadas curva a curva particionadas por trecho (leg),
+        cada um com sua cor característica para identificação e destaque visual interativo.
         """
         if len(waypoints) < 2:
-            return {"type": "LineString", "coordinates": []}
+            return {"type": "FeatureCollection", "features": [], "coordinates": []}
 
         cached = geo_cache.get_polyline(waypoints)
         if cached:
             return cached["geojson"]
 
         coord_str = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in waypoints)
-        url = f"{self.BASE_URL}/route/v1/driving/{coord_str}?overview=full&geometries=geojson"
+        url = f"{self.BASE_URL}/route/v1/driving/{coord_str}?overview=full&geometries=geojson&steps=true"
 
         try:
             req = urllib.request.Request(
@@ -176,17 +192,90 @@ class OSRMProvider:
                     data = json.loads(response.read().decode("utf-8"))
                     if data.get("code") == "Ok" and len(data.get("routes", [])) > 0:
                         route = data["routes"][0]
-                        geojson = route["geometry"]
                         duration = route.get("duration", 0)
                         distance = route.get("distance", 0)
-                        geo_cache.set_polyline(waypoints, geojson, duration, distance)
-                        return geojson
+
+                        legs = route.get("legs", [])
+                        features = []
+                        all_coords = []
+
+                        for leg_idx, leg in enumerate(legs):
+                            leg_coords = []
+                            for step in leg.get("steps", []):
+                                c = step.get("geometry", {}).get("coordinates", [])
+                                if not leg_coords:
+                                    leg_coords.extend(c)
+                                else:
+                                    if c and c[0] == leg_coords[-1]:
+                                        leg_coords.extend(c[1:])
+                                    else:
+                                        leg_coords.extend(c)
+
+                            # Fallback de segurança se os steps não contiverem geometria
+                            if not leg_coords and leg_idx < len(waypoints) - 1:
+                                p1 = waypoints[leg_idx]
+                                p2 = waypoints[leg_idx + 1]
+                                leg_coords = [[p1[1], p1[0]], [p2[1], p2[0]]]
+
+                            all_coords.extend(leg_coords)
+                            color = self.ROUTE_LEG_COLORS[leg_idx % len(self.ROUTE_LEG_COLORS)]
+
+                            features.append({
+                                "type": "Feature",
+                                "properties": {
+                                    "leg_index": leg_idx,
+                                    "from_step": leg_idx,
+                                    "to_step": leg_idx + 1,
+                                    "color": color,
+                                    "distance_m": leg.get("distance", 0),
+                                    "duration_sec": leg.get("duration", 0)
+                                },
+                                "geometry": {
+                                    "type": "LineString",
+                                    "coordinates": leg_coords
+                                }
+                            })
+
+                        geojson_result = {
+                            "type": "FeatureCollection",
+                            "features": features,
+                            "coordinates": all_coords
+                        }
+
+                        geo_cache.set_polyline(waypoints, geojson_result, duration, distance)
+                        return geojson_result
         except Exception as e:
             print(f"[OSRMProvider] Falha ao obter polilinha no OSRM ({e}). Gerando GeoJSON linear.")
 
+        # Fallback offline resiliente: linha reta entre cada waypoint consecutivo com sua cor
+        features = []
+        all_coords = []
+        for i in range(len(waypoints) - 1):
+            p1 = waypoints[i]
+            p2 = waypoints[i + 1]
+            seg_coords = [[p1[1], p1[0]], [p2[1], p2[0]]]
+            all_coords.extend(seg_coords)
+            color = self.ROUTE_LEG_COLORS[i % len(self.ROUTE_LEG_COLORS)]
+            features.append({
+                "type": "Feature",
+                "properties": {
+                    "leg_index": i,
+                    "from_step": i,
+                    "to_step": i + 1,
+                    "color": color,
+                    "distance_m": self._haversine_distance_km(p1[0], p1[1], p2[0], p2[1]) * 1350.0,
+                    "duration_sec": (self._haversine_distance_km(p1[0], p1[1], p2[0], p2[1]) * 1.35 / 35.0) * 3600.0
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": seg_coords
+                }
+            })
+
         fallback_geojson = {
-            "type": "LineString",
-            "coordinates": [[lon, lat] for lat, lon in waypoints]
+            "type": "FeatureCollection",
+            "features": features,
+            "coordinates": all_coords
         }
         geo_cache.set_polyline(waypoints, fallback_geojson, 0, 0)
         return fallback_geojson
