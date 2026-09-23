@@ -1,0 +1,5 @@
+# Diretório de Design Plans
+Todos os Design Plans de features individuais elaborados pelo Designer devem ser salvos aqui no formato:
+`<feature>_design_plan.md` ou `<feature>.md`
+seguindo o template oficial em:
+.agents/docs/design/TEMPLATE_DESIGN_PLAN.md

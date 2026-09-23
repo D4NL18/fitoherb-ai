@@ -1,0 +1,3 @@
+# Diretório de Seeds de Banco de Dados
+Os arquivos SQL gerados pelo DBA para dados de teste devem ser salvos aqui no formato:
+`<modulo>_seeds.sql`
