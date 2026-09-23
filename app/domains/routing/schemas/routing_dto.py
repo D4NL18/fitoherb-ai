@@ -16,6 +16,8 @@ class OrderedStopDto(BaseModel):
     fixed_order: Optional[int] = Field(None, description="Ordem fixada solicitada")
     priority: str = Field("REGULAR", description="Nível de prioridade")
     arrival_time_minutes: float = Field(..., description="Tempo de viagem acumulado em minutos")
+    lat: Optional[float] = Field(None, description="Latitude do ponto")
+    lon: Optional[float] = Field(None, description="Longitude do ponto")
     address: Optional[Address] = Field(None, description="Endereço legível (rua, número, bairro, cidade)")
 
 class OptimizeRouteResponse(BaseModel):
