@@ -6,8 +6,8 @@ class OptimizeRouteRequest(BaseModel):
     depot: LocationPoint = Field(..., description="Ponto de partida do vendedor (Base ou Fitoherb HQ)")
     stops: List[DeliveryStop] = Field(..., description="Lista de clientes ou drogarias a serem visitadas")
     return_to_depot: bool = Field(True, description="Define se o itinerário deve retornar à base ao final")
-    departure_time: str = Field("08:00", description="Horário planejado de saída da base (formato HH:MM)")
-    default_service_minutes: int = Field(20, ge=1, description="Tempo padrão de atendimento em cada parada (minutos)")
+    departure_time: Optional[str] = Field(None, description="Horário planejado de saída da base (formato HH:MM, opcional)")
+    default_service_minutes: Optional[int] = Field(None, ge=1, description="Tempo padrão ou fallback (opcional)")
 
 class OrderedStopDto(BaseModel):
     step: int = Field(..., description="Número da etapa (0 é partida, 1..N são visitas, N+1 é retorno)")
@@ -34,7 +34,7 @@ class OptimizeRouteResponse(BaseModel):
     ordered_stops: List[OrderedStopDto]
     geojson_geometry: Dict[str, Any]
     fitness_history: List[float]
-    departure_clock: Optional[str] = Field("08:00", description="Horário de partida inicial da base")
+    departure_clock: Optional[str] = Field(None, description="Horário de partida inicial da base")
     estimated_finish_clock: Optional[str] = Field(None, description="Horário previsto de término e retorno à base")
     total_transit_minutes: Optional[float] = Field(None, description="Tempo total gasto em deslocamento viário")
     total_service_minutes: Optional[float] = Field(None, description="Tempo total gasto em atendimentos a clientes")

@@ -95,7 +95,7 @@ class TrafficPredictor:
     @classmethod
     def get_traffic_multiplier(
         cls,
-        time_minutes_from_midnight: float,
+        time_minutes_from_midnight: Optional[float],
         distance_km: float,
         origin_city: Optional[str] = None,
         dest_city: Optional[str] = None,
@@ -103,8 +103,11 @@ class TrafficPredictor:
     ) -> Tuple[float, str]:
         """
         Calcula o multiplicador de trânsito k(tau) e o status descritivo.
-        time_minutes_from_midnight: minutos desde 00:00 (ex: 08:30 = 8 * 60 + 30 = 510).
+        Se time_minutes_from_midnight for None, retorna fluxo neutro (1.0, 'LIVRE').
         """
+        if time_minutes_from_midnight is None:
+            return 1.0, "LIVRE"
+
         # Determina o porte predominante do trecho
         tier_orig = cls.get_city_tier(origin_city, base_city)
         tier_dest = cls.get_city_tier(dest_city, base_city)
@@ -179,17 +182,23 @@ class TrafficPredictor:
         return round(multiplier, 2), condition
 
     @classmethod
-    def parse_time_str(cls, time_str: str) -> float:
-        """Converte 'HH:MM' para minutos desde meia-noite."""
+    def parse_time_str(cls, time_str: Optional[str]) -> Optional[float]:
+        """Converte 'HH:MM' para minutos desde meia-noite, ou retorna None se não fornecido."""
+        if not time_str or not str(time_str).strip():
+            return None
         try:
-            parts = time_str.split(":")
-            return float(int(parts[0]) * 60 + int(parts[1]))
+            parts = str(time_str).strip().split(":")
+            if len(parts) >= 2:
+                return float(int(parts[0]) * 60 + int(parts[1]))
         except Exception:
-            return 8.0 * 60.0 # Default 08:00 (480 min)
+            pass
+        return None
 
     @classmethod
-    def format_clock(cls, minutes_from_midnight: float) -> str:
-        """Converte minutos desde meia-noite para formato 'HH:MM'."""
+    def format_clock(cls, minutes_from_midnight: Optional[float]) -> Optional[str]:
+        """Converte minutos desde meia-noite para formato 'HH:MM', ou None se não aplicável."""
+        if minutes_from_midnight is None:
+            return None
         total_mins = int(round(minutes_from_midnight)) % 1440
         h = total_mins // 60
         m = total_mins % 60

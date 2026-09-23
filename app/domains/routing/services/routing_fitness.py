@@ -11,7 +11,7 @@ class RoutingFitnessEvaluator:
         deliveries_data: List[Dict[str, Any]],
         return_to_depot: bool = True,
         fixed_positions: Dict[int, int] = None,
-        departure_time_minutes: float = 480.0, # 08:00
+        departure_time_minutes: Optional[float] = None,
         default_service_minutes: int = 20,
         base_city: Optional[str] = None,
         points_cities: List[str] = None,
@@ -87,8 +87,9 @@ class RoutingFitnessEvaluator:
             total_transit_sec += adjusted_leg_sec
             total_distance_m += leg_dist_m
 
-            # Avança o relógio com o tempo de deslocamento
-            curr_clock_min += (adjusted_leg_sec / 60.0)
+            # Avança o relógio com o tempo de deslocamento (se agendamento ativo)
+            if curr_clock_min is not None:
+                curr_clock_min += (adjusted_leg_sec / 60.0)
 
             # 2. Anti-Overshoot / Anti-Backtracking em Corredores:
             # Verifica se o salto de curr_node -> next_node 'passou direto' por algum nó não visitado
@@ -122,7 +123,8 @@ class RoutingFitnessEvaluator:
                 deliv = self.deliveries[delivery_idx]
                 service_min = deliv.get("service_duration_minutes") or self.default_service_minutes
                 total_service_min += service_min
-                curr_clock_min += service_min
+                if curr_clock_min is not None:
+                    curr_clock_min += service_min
 
                 # Priorização de Atendimento
                 prio = deliv.get("priority", "REGULAR")
@@ -153,7 +155,8 @@ class RoutingFitnessEvaluator:
             adjusted_leg_sec = base_duration_sec * traffic_k
             total_transit_sec += adjusted_leg_sec
             total_distance_m += leg_dist_m
-            curr_clock_min += (adjusted_leg_sec / 60.0)
+            if curr_clock_min is not None:
+                curr_clock_min += (adjusted_leg_sec / 60.0)
 
         # 5. Função Objetivo TDVRP Multiobjetivo:
         # Tempo viário com trânsito real + Distância ponderada + Penalidades + Anti-Overshoot

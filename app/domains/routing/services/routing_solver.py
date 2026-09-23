@@ -12,7 +12,7 @@ class RoutingGeneticSolver:
         distances_matrix_m: List[List[float]],
         deliveries_data: List[Dict[str, Any]],
         return_to_depot: bool = True,
-        departure_time_minutes: float = 480.0,
+        departure_time_minutes: Optional[float] = None,
         default_service_minutes: int = 20,
         base_city: Optional[str] = None,
         points_cities: List[str] = None,
