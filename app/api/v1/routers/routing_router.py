@@ -16,11 +16,14 @@ router = APIRouter(
     tags=["Roteirização Comercial com Algoritmo Genético"]
 )
 
+from app.domains.routing.traffic_model import TrafficPredictor
+
 @router.post("/optimize", response_model=OptimizeRouteResponse)
 def optimize_route(payload: OptimizeRouteRequest):
     """
-    Otimiza a sequência de visitas de um vendedor único através de Algoritmo Genético (Locked-OX),
-    respeitando estritamente posições fixadas manualmente e minimizando tempo viário e quilometragem.
+    Otimiza a sequência de visitas de um vendedor único através de Algoritmo Genético TDVRP,
+    respeitando estritamente posições fixadas manualmente, mitigando horários de pico conforme porte da cidade,
+    eliminando laços de retrocesso e projetando a linha do tempo com horário de partida e atendimento.
     """
     if not payload.stops:
         raise HTTPException(status_code=400, detail="É necessário fornecer ao menos uma parada de visita.")
@@ -28,24 +31,44 @@ def optimize_route(payload: OptimizeRouteRequest):
     # 1. Monta coordenadas: Nó 0 é o Depósito/Base, Nós 1..N são as paradas
     points = [(payload.depot.lat, payload.depot.lon)] + [(s.lat, s.lon) for s in payload.stops]
 
+    # Identificação de Cidades para Previsão de Trânsito Dinâmica
+    base_city = payload.depot.address.city if payload.depot.address else None
+    points_cities = [base_city or ""]
+    for s in payload.stops:
+        points_cities.append(s.address.city if s.address and s.address.city else (base_city or ""))
+
+    dep_time_mins = TrafficPredictor.parse_time_str(payload.departure_time)
+
     # 2. Obtém matrizes de tempo e distância viária via OSRM (com cache e fallback)
     durations_sec, distances_m = osrm_provider.get_matrix(points)
 
-    # 3. Executa o Algoritmo Genético de Vendedor Único com Trava de Ordem
+    # 3. Executa o Algoritmo Genético de Vendedor Único TDVRP com Trava de Ordem e 2-Opt
     deliveries_dict = [s.model_dump() for s in payload.stops]
     solver = RoutingGeneticSolver(
         durations_matrix_sec=durations_sec,
         distances_matrix_m=distances_m,
         deliveries_data=deliveries_dict,
-        return_to_depot=payload.return_to_depot
+        return_to_depot=payload.return_to_depot,
+        departure_time_minutes=dep_time_mins,
+        default_service_minutes=payload.default_service_minutes,
+        base_city=base_city,
+        points_cities=points_cities,
+        coordinates=points
     )
     result = solver.solve()
 
     ordered_sequence = result["ordered_sequence"]
 
-    # 4. Constrói a lista ordenada de paradas enriquecida com tempos e endereços legíveis
+    # 4. Constrói a linha do tempo de paradas com relógio real e status de tráfego
     ordered_stops: List[OrderedStopDto] = []
     waypoints_for_geo = [(payload.depot.lat, payload.depot.lon)]
+
+    curr_clock_min = dep_time_mins
+    total_transit_sec = 0.0
+    total_service_min = 0.0
+    peak_count = 0
+
+    departure_clock_str = TrafficPredictor.format_clock(dep_time_mins)
 
     # Ponto de Partida (Step 0)
     ordered_stops.append(OrderedStopDto(
@@ -58,15 +81,48 @@ def optimize_route(payload: OptimizeRouteRequest):
         is_fixed=True,
         priority="BASE",
         arrival_time_minutes=0.0,
-        address=payload.depot.address
+        address=payload.depot.address,
+        estimated_arrival_clock=departure_clock_str,
+        estimated_departure_clock=departure_clock_str,
+        service_duration_minutes=0,
+        traffic_factor=1.0,
+        traffic_condition="LIVRE"
     ))
 
-    accumulated_time_sec = 0.0
     prev_node = 0
 
     for step_num, node_idx in enumerate(ordered_sequence, start=1):
-        accumulated_time_sec += durations_sec[prev_node][node_idx]
+        leg_dist_m = distances_m[prev_node][node_idx]
+        leg_dist_km = leg_dist_m / 1000.0
+        base_sec = durations_sec[prev_node][node_idx]
+
+        orig_city = points_cities[prev_node]
+        dest_city = points_cities[node_idx]
+
+        # Multiplicador dinâmico de trânsito dependente do horário de saída do ponto anterior
+        traffic_k, traffic_cond = TrafficPredictor.get_traffic_multiplier(
+            time_minutes_from_midnight=curr_clock_min,
+            distance_km=leg_dist_km,
+            origin_city=orig_city,
+            dest_city=dest_city,
+            base_city=base_city
+        )
+
+        if "PICO" in traffic_cond:
+            peak_count += 1
+
+        adjusted_leg_sec = base_sec * traffic_k
+        total_transit_sec += adjusted_leg_sec
+        curr_clock_min += (adjusted_leg_sec / 60.0)
+
+        arrival_clock_str = TrafficPredictor.format_clock(curr_clock_min)
+
         stop_data = payload.stops[node_idx - 1]
+        service_mins = stop_data.service_duration_minutes or payload.default_service_minutes
+        total_service_min += service_mins
+        curr_clock_min += service_mins
+
+        departure_clock_str = TrafficPredictor.format_clock(curr_clock_min)
         is_locked = stop_data.fixed_order is not None
 
         ordered_stops.append(OrderedStopDto(
@@ -79,15 +135,43 @@ def optimize_route(payload: OptimizeRouteRequest):
             is_fixed=is_locked,
             fixed_order=stop_data.fixed_order,
             priority=stop_data.priority,
-            arrival_time_minutes=round(accumulated_time_sec / 60.0, 1),
-            address=stop_data.address
+            arrival_time_minutes=round(total_transit_sec / 60.0, 1),
+            address=stop_data.address,
+            estimated_arrival_clock=arrival_clock_str,
+            estimated_departure_clock=departure_clock_str,
+            service_duration_minutes=service_mins,
+            traffic_factor=traffic_k,
+            traffic_condition=traffic_cond
         ))
         waypoints_for_geo.append((stop_data.lat, stop_data.lon))
         prev_node = node_idx
 
     # Retorno à base (se habilitado)
     if payload.return_to_depot:
-        accumulated_time_sec += durations_sec[prev_node][0]
+        leg_dist_m = distances_m[prev_node][0]
+        leg_dist_km = leg_dist_m / 1000.0
+        base_sec = durations_sec[prev_node][0]
+
+        orig_city = points_cities[prev_node]
+        dest_city = base_city
+
+        traffic_k, traffic_cond = TrafficPredictor.get_traffic_multiplier(
+            time_minutes_from_midnight=curr_clock_min,
+            distance_km=leg_dist_km,
+            origin_city=orig_city,
+            dest_city=dest_city,
+            base_city=base_city
+        )
+
+        if "PICO" in traffic_cond:
+            peak_count += 1
+
+        adjusted_leg_sec = base_sec * traffic_k
+        total_transit_sec += adjusted_leg_sec
+        curr_clock_min += (adjusted_leg_sec / 60.0)
+
+        finish_clock_str = TrafficPredictor.format_clock(curr_clock_min)
+
         ordered_stops.append(OrderedStopDto(
             step=len(ordered_sequence) + 1,
             id=payload.depot.id,
@@ -97,8 +181,13 @@ def optimize_route(payload: OptimizeRouteRequest):
             lon=payload.depot.lon,
             is_fixed=True,
             priority="BASE",
-            arrival_time_minutes=round(accumulated_time_sec / 60.0, 1),
-            address=payload.depot.address
+            arrival_time_minutes=round(total_transit_sec / 60.0, 1),
+            address=payload.depot.address,
+            estimated_arrival_clock=finish_clock_str,
+            estimated_departure_clock=finish_clock_str,
+            service_duration_minutes=0,
+            traffic_factor=traffic_k,
+            traffic_condition=traffic_cond
         ))
         waypoints_for_geo.append((payload.depot.lat, payload.depot.lon))
 
@@ -106,12 +195,17 @@ def optimize_route(payload: OptimizeRouteRequest):
     geojson = osrm_provider.get_route_geometry(waypoints_for_geo)
 
     return OptimizeRouteResponse(
-        total_time_minutes=result["total_time_minutes"],
+        total_time_minutes=round(total_transit_sec / 60.0, 1),
         total_distance_km=result["total_distance_km"],
         stops_count=len(payload.stops),
         ordered_stops=ordered_stops,
         geojson_geometry=geojson,
-        fitness_history=result["fitness_history"]
+        fitness_history=result["fitness_history"],
+        departure_clock=TrafficPredictor.format_clock(dep_time_mins),
+        estimated_finish_clock=TrafficPredictor.format_clock(curr_clock_min),
+        total_transit_minutes=round(total_transit_sec / 60.0, 1),
+        total_service_minutes=round(float(total_service_min), 1),
+        peak_hours_encountered=peak_count
     )
 
 @router.post("/export-pdf")

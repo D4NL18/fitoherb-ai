@@ -158,7 +158,16 @@ class PdfReportService:
                 addr_str = " - ".join(parts) if parts else (s.address.full_address or "-")
 
             status_str = "🔒 Ordem Fixa" if s.is_fixed else "⚡ IA Otimizado"
-            arr_time_str = f"+{s.arrival_time_minutes:.0f} min" if s.arrival_time_minutes > 0 else "0 min"
+            if s.traffic_condition and s.traffic_condition != "LIVRE":
+                status_str += f"<br/><font color='#b91c1c' size='7'>({s.traffic_condition})</font>"
+
+            if s.estimated_arrival_clock:
+                if s.action == "VISIT" and s.estimated_departure_clock:
+                    arr_time_str = f"<b>{s.estimated_arrival_clock}</b><br/><font size='7' color='#6b7280'>Até {s.estimated_departure_clock}</font>"
+                else:
+                    arr_time_str = f"<b>{s.estimated_arrival_clock}</b>"
+            else:
+                arr_time_str = f"+{s.arrival_time_minutes:.0f} min" if s.arrival_time_minutes > 0 else "0 min"
 
             table_rows.append([
                 Paragraph(step_label, cell_bold_style),
@@ -168,7 +177,7 @@ class PdfReportService:
                 Paragraph(status_str, cell_text_style)
             ])
 
-        route_table = Table(table_rows, colWidths=[50, 130, 230, 65, 65])
+        route_table = Table(table_rows, colWidths=[50, 130, 220, 75, 65])
         route_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),

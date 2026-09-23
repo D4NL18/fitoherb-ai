@@ -159,3 +159,39 @@ def test_routing_solver_urgent_priority(mock_matrix):
     # Parada 4 (nó 4) deve ser atendida prioritariamente na primeira posição (seq[0] == 4)
     assert seq[0] == 4, f"Parada urgente deveria ser atendida primeiro, mas a ordem foi {seq}"
 
+def test_corridor_anti_overshoot():
+    # Base (0, 0), Parada 1: Abrantes (0.05, 0.05), Parada 2: Guarajuba (0.15, 0.15), Parada 3: Salvador (-0.1, -0.1)
+    coords = [
+        (-12.899, -38.324), # 0: Base Lauro
+        (-12.840, -38.250), # 1: Abrantes (~12 km)
+        (-12.710, -38.120), # 2: Guarajuba (~32 km mesmo eixo)
+        (-13.000, -38.500), # 3: Salvador (~25 km eixo oposto)
+    ]
+    provider = OSRMProvider()
+    durations, distances = provider.get_matrix(coords)
+    deliveries = [
+        {"id": "del-1", "name": "Abrantes", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-2", "name": "Guarajuba", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-3", "name": "Salvador", "priority": "REGULAR", "fixed_order": None},
+    ]
+
+    solver = RoutingGeneticSolver(
+        durations_matrix_sec=durations,
+        distances_matrix_m=distances,
+        deliveries_data=deliveries,
+        return_to_depot=True,
+        coordinates=coords,
+        generations=30
+    )
+    result = solver.solve()
+    seq = result["ordered_sequence"]
+
+    # Se visitou Abrantes (1) e Guarajuba (2) antes de Salvador (3),
+    # 1 DEVE vir antes de 2 (não deve passar direto por Abrantes para ir a Guarajuba primeiro!)
+    idx_abrantes = seq.index(1)
+    idx_guarajuba = seq.index(2)
+    idx_salvador = seq.index(3)
+
+    if idx_abrantes < idx_salvador and idx_guarajuba < idx_salvador:
+        assert idx_abrantes < idx_guarajuba, f"Deveria visitar Abrantes antes de Guarajuba na ida, mas a ordem foi {seq}"
+

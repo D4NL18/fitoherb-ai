@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from app.core.config import settings
 from .routing_chromosome import RoutingChromosome
 from .routing_operators import RoutingOperators
@@ -12,6 +12,11 @@ class RoutingGeneticSolver:
         distances_matrix_m: List[List[float]],
         deliveries_data: List[Dict[str, Any]],
         return_to_depot: bool = True,
+        departure_time_minutes: float = 480.0,
+        default_service_minutes: int = 20,
+        base_city: Optional[str] = None,
+        points_cities: List[str] = None,
+        coordinates: List[Tuple[float, float]] = None,
         population_size: int = settings.GA_POPULATION_SIZE,
         generations: int = settings.GA_GENERATIONS,
         mutation_rate: float = settings.GA_MUTATION_RATE,
@@ -23,7 +28,6 @@ class RoutingGeneticSolver:
         self.return_to_depot = return_to_depot
         
         # Mapeia travas manuais: fixed_order (1-indexed) -> posicao_0_indexed
-        # Exemplo: parada com fixed_order = 1 vai na posicao 0 do cromossomo
         self.fixed_positions: Dict[int, int] = {}
         for idx_0, d in enumerate(deliveries_data):
             f_ord = d.get("fixed_order")
@@ -37,7 +41,12 @@ class RoutingGeneticSolver:
             distances_matrix_m=distances_matrix_m,
             deliveries_data=deliveries_data,
             return_to_depot=return_to_depot,
-            fixed_positions=self.fixed_positions
+            fixed_positions=self.fixed_positions,
+            departure_time_minutes=departure_time_minutes,
+            default_service_minutes=default_service_minutes,
+            base_city=base_city,
+            points_cities=points_cities,
+            coordinates=coordinates
         )
         
         self.population_size = max(10, population_size)
@@ -51,9 +60,8 @@ class RoutingGeneticSolver:
 
     def _generate_nearest_neighbor_hotstart(self) -> RoutingChromosome:
         """
-        Hotstart Heurístico com Respeito a Posições Fixas:
-        Constrói uma solução de alta qualidade respeitando os nós fixos
-        e preenchendo as lacunas intermediárias com o vizinho mais próximo.
+        Hotstart Heurístico com Respeito a Posições Fixas e Varredura Progressiva:
+        Constrói uma solução inicial gulosa priorizando nós urgentes e paradas no caminho.
         """
         if self.num_stops <= 1:
             return RoutingChromosome(sequence=list(range(1, self.num_stops + 1)))
@@ -73,17 +81,61 @@ class RoutingGeneticSolver:
                 curr_loc = seq[i]
             else:
                 if free_stops:
-                    # Filtra paradas livres por prioridade: CRITICAL -> HIGH -> REGULAR
                     critical_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "CRITICAL"]
                     high_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "HIGH"]
 
                     candidates = critical_stops if critical_stops else (high_stops if high_stops else list(free_stops))
+                    
+                    # Custo guloso: menor duração ajustada
                     nxt = min(candidates, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
                     seq[i] = nxt
                     free_stops.remove(nxt)
                     curr_loc = nxt
 
         return RoutingChromosome(sequence=seq)
+
+    def _apply_2opt(self, chromosome: RoutingChromosome) -> RoutingChromosome:
+        """
+        Refinamento Local 2-Opt pós-genético:
+        Desata laços cruzados e elimina idas e voltas desnecessárias no mesmo corredor,
+        respeitando rigorosamente posições fixadas manualmente.
+        """
+        best_seq = list(chromosome.sequence)
+        n = len(best_seq)
+        if n < 4:
+            return chromosome
+
+        improved = True
+        iterations = 0
+        max_iterations = 40
+
+        while improved and iterations < max_iterations:
+            improved = False
+            iterations += 1
+
+            for i in range(n - 1):
+                if i in self.fixed_positions:
+                    continue
+
+                for j in range(i + 1, n):
+                    has_lock = any(pos in self.fixed_positions for pos in range(i, j + 1))
+                    if has_lock:
+                        continue
+
+                    # Testa inversão do segmento [i:j+1]
+                    new_seq = best_seq[:i] + best_seq[i:j+1][::-1] + best_seq[j+1:]
+                    candidate = RoutingChromosome(sequence=new_seq)
+                    self.evaluator.evaluate(candidate)
+
+                    if candidate.fitness < chromosome.fitness - 0.01:
+                        chromosome = candidate
+                        best_seq = new_seq
+                        improved = True
+                        break
+                if improved:
+                    break
+
+        return chromosome
 
     def solve(self) -> Dict[str, Any]:
         start_time = time.time()
@@ -148,7 +200,10 @@ class RoutingGeneticSolver:
 
             population = sorted(new_population, key=lambda ind: ind.fitness)
 
+        # 3. Refinamento Local 2-Opt
+        self.best_chromosome = self._apply_2opt(self.best_chromosome)
         self.evaluator.evaluate(self.best_chromosome)
+
         elapsed = round(time.time() - start_time, 3)
 
         return {
