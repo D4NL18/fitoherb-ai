@@ -73,7 +73,12 @@ class RoutingGeneticSolver:
                 curr_loc = seq[i]
             else:
                 if free_stops:
-                    nxt = min(free_stops, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
+                    # Filtra paradas livres por prioridade: CRITICAL -> HIGH -> REGULAR
+                    critical_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "CRITICAL"]
+                    high_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "HIGH"]
+
+                    candidates = critical_stops if critical_stops else (high_stops if high_stops else list(free_stops))
+                    nxt = min(candidates, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
                     seq[i] = nxt
                     free_stops.remove(nxt)
                     curr_loc = nxt

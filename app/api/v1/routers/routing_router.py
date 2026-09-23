@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Response
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.domains.routing.schemas.routing_dto import (
     OptimizeRouteRequest,
     OptimizeRouteResponse,
@@ -123,27 +123,60 @@ def export_route_pdf(payload: ExportPdfRequest):
     )
 
 @router.get("/search-address")
-def search_address_proxy(q: str):
+def search_address_proxy(
+    q: str, 
+    lat: Optional[float] = None, 
+    lon: Optional[float] = None
+):
     """
-    Proxy de busca de endereços no Nominatim com User-Agent corporativo homologado,
-    eliminando bloqueios de CORS e restrições de chamadas diretas do navegador.
+    Proxy de busca de endereços no Nominatim com priorização de proximidade geográfica:
+    Quando lat/lon da base do vendedor são fornecidos, aplica viewbox e ordena os resultados
+    mais próximos da base em primeiro lugar (ex: Feira de Santana, Salvador, etc).
     """
     import urllib.parse
     import urllib.request
     import json
+    import math
+
+    def _haversine(lat1, lon1, lat2, lon2):
+        R = 6371.0
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
 
     if not q or not q.strip():
         return []
 
     encoded = urllib.parse.quote(q.strip())
-    url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=8"
+    
+    if lat is not None and lon is not None:
+        delta = 1.5
+        min_lon = lon - delta
+        max_lon = lon + delta
+        min_lat = lat - delta
+        max_lat = lat + delta
+        viewbox_str = f"{min_lon},{max_lat},{max_lon},{min_lat}"
+        url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&viewbox={viewbox_str}&bounded=0&limit=12"
+    else:
+        url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=10"
+
     req = urllib.request.Request(
         url, 
         headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
     )
     try:
         with urllib.request.urlopen(req, timeout=5) as response:
-            return json.loads(response.read().decode('utf-8'))
+            items = json.loads(response.read().decode('utf-8'))
+            if lat is not None and lon is not None and items:
+                for it in items:
+                    try:
+                        it["_distance_km"] = _haversine(lat, lon, float(it["lat"]), float(it["lon"]))
+                    except (ValueError, KeyError):
+                        it["_distance_km"] = 99999.0
+                items.sort(key=lambda x: x.get("_distance_km", 99999.0))
+            return items
     except Exception as e:
         return []
 

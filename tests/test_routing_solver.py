@@ -135,3 +135,27 @@ def test_pdf_manifest_generation():
     assert pdf_bytes is not None
     assert len(pdf_bytes) > 500
     assert pdf_bytes.startswith(b"%PDF")
+
+def test_routing_solver_urgent_priority(mock_matrix):
+    durations, distances = mock_matrix
+    # Parada 4 é marcada como Urgente (CRITICAL), paradas 1, 2, 3 são REGULAR
+    deliveries = [
+        {"id": "del-1", "name": "Cliente Regular 1", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-2", "name": "Cliente Regular 2", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-3", "name": "Cliente Regular 3", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-4", "name": "Cliente Urgente 4", "priority": "CRITICAL", "fixed_order": None},
+    ]
+
+    solver = RoutingGeneticSolver(
+        durations_matrix_sec=durations,
+        distances_matrix_m=distances,
+        deliveries_data=deliveries,
+        return_to_depot=True,
+        generations=25
+    )
+    result = solver.solve()
+    seq = result["ordered_sequence"]
+    
+    # Parada 4 (nó 4) deve ser atendida prioritariamente na primeira posição (seq[0] == 4)
+    assert seq[0] == 4, f"Parada urgente deveria ser atendida primeiro, mas a ordem foi {seq}"
+
