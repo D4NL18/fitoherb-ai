@@ -84,10 +84,15 @@ class RoutingGeneticSolver:
                     critical_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "CRITICAL"]
                     high_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "HIGH"]
 
-                    candidates = critical_stops if critical_stops else (high_stops if high_stops else list(free_stops))
+                    if critical_stops:
+                        candidates = critical_stops
+                    elif high_stops:
+                        candidates = high_stops
+                    else:
+                        candidates = list(free_stops)
                     
                     # Custo guloso: menor duração ajustada
-                    nxt = min(candidates, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
+                    nxt = min(candidates, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
                     seq[i] = nxt
                     free_stops.remove(nxt)
                     curr_loc = nxt

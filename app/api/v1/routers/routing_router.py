@@ -401,7 +401,7 @@ def search_address_proxy(
                         it["_distance_km"] = 99999.0
                 items.sort(key=lambda x: x.get("_distance_km", 99999.0))
             return items
-    except Exception as e:
+    except Exception:
         return []
 
 @router.get("/reverse-geocode")
@@ -420,6 +420,6 @@ def reverse_geocode_proxy(lat: float, lon: float):
     try:
         with urllib.request.urlopen(req, timeout=5) as response:
             return json.loads(response.read().decode('utf-8'))
-    except Exception as e:
+    except Exception:
         return {}
 
