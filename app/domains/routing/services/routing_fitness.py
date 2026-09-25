@@ -54,9 +54,7 @@ class RoutingFitnessEvaluator:
         curr_node = 0
         curr_clock_min = self.departure_time_minutes
         total_transit_sec = 0.0
-        total_service_min = 0.0
         total_distance_m = 0.0
-        peak_legs = 0
 
         # Conjunto de nós ainda não visitados para cálculo de anti-overshoot
         unvisited = set(seq)
@@ -79,9 +77,6 @@ class RoutingFitnessEvaluator:
                 dest_city=dest_city,
                 base_city=self.base_city
             )
-
-            if "PICO" in traffic_cond:
-                peak_legs += 1
 
             adjusted_leg_sec = base_duration_sec * traffic_k
             total_transit_sec += adjusted_leg_sec
@@ -122,7 +117,6 @@ class RoutingFitnessEvaluator:
             if 0 <= delivery_idx < len(self.deliveries):
                 deliv = self.deliveries[delivery_idx]
                 service_min = deliv.get("service_duration_minutes") or self.default_service_minutes
-                total_service_min += service_min
                 if curr_clock_min is not None:
                     curr_clock_min += service_min
 
