@@ -25,3 +25,8 @@ class DeliveryStop(LocationPoint):
         description="Posição fixa desejada na sequência da rota (1-indexed: 1 para 1ª parada, etc.)"
     )
     demand: float = Field(10.0, description="Demanda/Carga estimada (neutro)")
+    service_duration_minutes: Optional[int] = Field(
+        None, 
+        ge=0, 
+        description="Tempo de atendimento no cliente em minutos (dwell time)"
+    )

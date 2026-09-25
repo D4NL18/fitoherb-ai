@@ -135,3 +135,183 @@ def test_pdf_manifest_generation():
     assert pdf_bytes is not None
     assert len(pdf_bytes) > 500
     assert pdf_bytes.startswith(b"%PDF")
+
+def test_routing_solver_urgent_priority(mock_matrix):
+    durations, distances = mock_matrix
+    # Parada 4 é marcada como Urgente (CRITICAL), paradas 1, 2, 3 são REGULAR
+    deliveries = [
+        {"id": "del-1", "name": "Cliente Regular 1", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-2", "name": "Cliente Regular 2", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-3", "name": "Cliente Regular 3", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-4", "name": "Cliente Urgente 4", "priority": "CRITICAL", "fixed_order": None},
+    ]
+
+    solver = RoutingGeneticSolver(
+        durations_matrix_sec=durations,
+        distances_matrix_m=distances,
+        deliveries_data=deliveries,
+        return_to_depot=True,
+        generations=25
+    )
+    result = solver.solve()
+    seq = result["ordered_sequence"]
+    
+    # Parada 4 (nó 4) deve ser atendida prioritariamente na primeira posição (seq[0] == 4)
+    assert seq[0] == 4, f"Parada urgente deveria ser atendida primeiro, mas a ordem foi {seq}"
+
+def test_corridor_anti_overshoot():
+    # Base (0, 0), Parada 1: Abrantes (0.05, 0.05), Parada 2: Guarajuba (0.15, 0.15), Parada 3: Salvador (-0.1, -0.1)
+    coords = [
+        (-12.899, -38.324), # 0: Base Lauro
+        (-12.840, -38.250), # 1: Abrantes (~12 km)
+        (-12.710, -38.120), # 2: Guarajuba (~32 km mesmo eixo)
+        (-13.000, -38.500), # 3: Salvador (~25 km eixo oposto)
+    ]
+    provider = OSRMProvider()
+    durations, distances = provider.get_matrix(coords)
+    deliveries = [
+        {"id": "del-1", "name": "Abrantes", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-2", "name": "Guarajuba", "priority": "REGULAR", "fixed_order": None},
+        {"id": "del-3", "name": "Salvador", "priority": "REGULAR", "fixed_order": None},
+    ]
+
+    solver = RoutingGeneticSolver(
+        durations_matrix_sec=durations,
+        distances_matrix_m=distances,
+        deliveries_data=deliveries,
+        return_to_depot=True,
+        coordinates=coords,
+        generations=30
+    )
+    result = solver.solve()
+    seq = result["ordered_sequence"]
+
+    # Se visitou Abrantes (1) e Guarajuba (2) antes de Salvador (3),
+    # 1 DEVE vir antes de 2 (não deve passar direto por Abrantes para ir a Guarajuba primeiro!)
+    idx_abrantes = seq.index(1)
+    idx_guarajuba = seq.index(2)
+    idx_salvador = seq.index(3)
+
+    if idx_abrantes < idx_salvador and idx_guarajuba < idx_salvador:
+        assert idx_abrantes < idx_guarajuba, f"Deveria visitar Abrantes antes de Guarajuba na ida, mas a ordem foi {seq}"
+
+def test_optimize_route_legacy_fallback_when_no_departure_time():
+    from app.api.v1.routers.routing_router import optimize_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base", lat=-12.899, lon=-38.324),
+        stops=[
+            DeliveryStop(id="s1", name="Ponto 1", lat=-12.840, lon=-38.250, service_duration_minutes=30),
+            DeliveryStop(id="s2", name="Ponto 2", lat=-12.710, lon=-38.120, service_duration_minutes=20)
+        ],
+        departure_time=None, # Sem horário de partida -> deve cair no modo legado
+        return_to_depot=True
+    )
+
+    resp = optimize_route(payload)
+    # No modo legado, relógios reais e trânsito dinâmico não são projetados
+    assert resp.departure_clock is None
+    assert resp.estimated_finish_clock is None
+    assert resp.total_transit_minutes is None
+    assert resp.total_service_minutes is None
+    assert resp.ordered_stops[0].estimated_arrival_clock is None
+    assert resp.ordered_stops[1].traffic_factor is None
+    assert resp.ordered_stops[1].service_duration_minutes is None
+    assert resp.total_time_minutes > 0
+
+def test_optimize_route_legacy_fallback_when_no_stop_durations():
+    from app.api.v1.routers.routing_router import optimize_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base", lat=-12.899, lon=-38.324),
+        stops=[
+            DeliveryStop(id="s1", name="Ponto 1", lat=-12.840, lon=-38.250, service_duration_minutes=None),
+            DeliveryStop(id="s2", name="Ponto 2", lat=-12.710, lon=-38.120, service_duration_minutes=0)
+        ],
+        departure_time="08:00",
+        return_to_depot=True
+    )
+
+    resp = optimize_route(payload)
+    # Sem duração em nenhum ponto -> deve cair no modo legado
+    assert resp.departure_clock is None
+    assert resp.estimated_finish_clock is None
+    assert resp.total_transit_minutes is None
+    assert resp.total_service_minutes is None
+
+def test_optimize_route_temporal_active_with_average_imputation():
+    from app.api.v1.routers.routing_router import optimize_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base", lat=-12.899, lon=-38.324),
+        stops=[
+            # Ponto 1 tem 40 min, Ponto 2 não tem duração (deve herdar a média = 40 min)
+            DeliveryStop(id="s1", name="Ponto 1", lat=-12.840, lon=-38.250, service_duration_minutes=40),
+            DeliveryStop(id="s2", name="Ponto 2", lat=-12.710, lon=-38.120, service_duration_minutes=None)
+        ],
+        departure_time="08:00",
+        return_to_depot=True
+    )
+
+    resp = optimize_route(payload)
+    assert resp.departure_clock == "08:00"
+    assert resp.estimated_finish_clock is not None
+    assert resp.total_service_minutes == 80.0 # 40 + 40
+    # Verifica que ambas as paradas de visita têm horários e duração de 40 min
+    visit_stops = [s for s in resp.ordered_stops if s.action == "VISIT"]
+    assert len(visit_stops) == 2
+    for s in visit_stops:
+        assert s.estimated_arrival_clock is not None
+        assert s.estimated_departure_clock is not None
+        assert s.service_duration_minutes == 40
+        assert s.traffic_factor is not None
+
+def test_route_geometry_feature_collection_legs():
+    from app.domains.routing.infrastructure.osrm_provider import osrm_provider
+    waypoints = [
+        (-12.899, -38.324), # Base
+        (-12.840, -38.250), # Ponto 1
+        (-12.710, -38.120)  # Ponto 2
+    ]
+    geojson = osrm_provider.get_route_geometry(waypoints)
+    assert geojson["type"] == "FeatureCollection"
+    assert "features" in geojson
+    assert len(geojson["features"]) == 2 # 2 trechos
+    leg0 = geojson["features"][0]
+    assert leg0["properties"]["leg_index"] == 0
+    assert leg0["properties"]["color"].startswith("#")
+    assert len(leg0["geometry"]["coordinates"]) >= 2
+
+
+def test_recalculate_route_preserves_exact_order():
+    from app.api.v1.routers.routing_router import recalculate_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base", lat=-12.899, lon=-38.324),
+        stops=[
+            DeliveryStop(id="sb", name="Ponto B", lat=-12.710, lon=-38.120, service_duration_minutes=30),
+            DeliveryStop(id="sa", name="Ponto A", lat=-12.840, lon=-38.250, service_duration_minutes=20),
+            DeliveryStop(id="sc", name="Ponto C", lat=-12.600, lon=-38.000, service_duration_minutes=15)
+        ],
+        departure_time="08:00",
+        return_to_depot=True
+    )
+
+    resp = recalculate_route(payload)
+    visit_stops = [s for s in resp.ordered_stops if s.action == "VISIT"]
+    assert len(visit_stops) == 3
+    assert [s.id for s in visit_stops] == ["sb", "sa", "sc"]
+    assert visit_stops[0].step == 1
+    assert visit_stops[1].step == 2
+    assert visit_stops[2].step == 3
+    assert resp.total_distance_km > 0
+    assert resp.total_time_minutes > 0
+    assert resp.geojson_geometry["type"] == "FeatureCollection"

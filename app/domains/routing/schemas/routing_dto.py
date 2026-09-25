@@ -6,6 +6,8 @@ class OptimizeRouteRequest(BaseModel):
     depot: LocationPoint = Field(..., description="Ponto de partida do vendedor (Base ou Fitoherb HQ)")
     stops: List[DeliveryStop] = Field(..., description="Lista de clientes ou drogarias a serem visitadas")
     return_to_depot: bool = Field(True, description="Define se o itinerário deve retornar à base ao final")
+    departure_time: Optional[str] = Field(None, description="Horário planejado de saída da base (formato HH:MM, opcional)")
+    default_service_minutes: Optional[int] = Field(None, ge=1, description="Tempo padrão ou fallback (opcional)")
 
 class OrderedStopDto(BaseModel):
     step: int = Field(..., description="Número da etapa (0 é partida, 1..N são visitas, N+1 é retorno)")
@@ -16,7 +18,14 @@ class OrderedStopDto(BaseModel):
     fixed_order: Optional[int] = Field(None, description="Ordem fixada solicitada")
     priority: str = Field("REGULAR", description="Nível de prioridade")
     arrival_time_minutes: float = Field(..., description="Tempo de viagem acumulado em minutos")
+    lat: Optional[float] = Field(None, description="Latitude do ponto")
+    lon: Optional[float] = Field(None, description="Longitude do ponto")
     address: Optional[Address] = Field(None, description="Endereço legível (rua, número, bairro, cidade)")
+    estimated_arrival_clock: Optional[str] = Field(None, description="Horário projetado de chegada no relógio (HH:MM)")
+    estimated_departure_clock: Optional[str] = Field(None, description="Horário projetado de partida após atendimento (HH:MM)")
+    service_duration_minutes: Optional[int] = Field(None, description="Tempo de atendimento nesta parada")
+    traffic_factor: Optional[float] = Field(None, description="Multiplicador de trânsito aplicado no trecho de chegada")
+    traffic_condition: Optional[str] = Field(None, description="Status do trânsito: LIVRE, MODERADO, PICO_MANHA, etc.")
 
 class OptimizeRouteResponse(BaseModel):
     total_time_minutes: float
@@ -25,6 +34,11 @@ class OptimizeRouteResponse(BaseModel):
     ordered_stops: List[OrderedStopDto]
     geojson_geometry: Dict[str, Any]
     fitness_history: List[float]
+    departure_clock: Optional[str] = Field(None, description="Horário de partida inicial da base")
+    estimated_finish_clock: Optional[str] = Field(None, description="Horário previsto de término e retorno à base")
+    total_transit_minutes: Optional[float] = Field(None, description="Tempo total gasto em deslocamento viário")
+    total_service_minutes: Optional[float] = Field(None, description="Tempo total gasto em atendimentos a clientes")
+    peak_hours_encountered: Optional[int] = Field(0, description="Quantidade de trechos percorridos sob horário de pico")
 
 class ExportPdfRequest(BaseModel):
     seller_name: str = Field("Vendedor Fitoherb", description="Nome do vendedor")

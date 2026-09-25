@@ -1,0 +1,48 @@
+name: Deploy AI Service QA to Cloud Run
+
+on:
+  push:
+    branches:
+      - qa
+
+env:
+  PROJECT_ID: fitoherb
+  SERVICE_NAME: fitoherb-ai-qa
+  REGION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+
+      - name: Autenticar no Google Cloud
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Configurar o Google Cloud CLI
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Configurar o Docker para enviar imagens
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Criar Imagem Docker e Enviar pro GCP (Artifact Registry)
+        run: |
+          IMAGE_NAME="us-central1-docker.pkg.dev/$PROJECT_ID/fitoherb-repo/$SERVICE_NAME:${{ github.sha }}"
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+      - name: Publicar no Cloud Run
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: '${{ env.SERVICE_NAME }}'
+          region: '${{ env.REGION }}'
+          image: 'us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/fitoherb-repo/${{ env.SERVICE_NAME }}:${{ github.sha }}'
+          flags: '--allow-unauthenticated --port=8000'
+          env_vars: |
+            ENVIRONMENT=qa
+            OSRM_BASE_URL=${{ secrets.OSRM_BASE_URL }}
