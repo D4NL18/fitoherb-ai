@@ -26,6 +26,9 @@ class OrderedStopDto(BaseModel):
     service_duration_minutes: Optional[int] = Field(None, description="Tempo de atendimento nesta parada")
     traffic_factor: Optional[float] = Field(None, description="Multiplicador de trânsito aplicado no trecho de chegada")
     traffic_condition: Optional[str] = Field(None, description="Status do trânsito: LIVRE, MODERADO, PICO_MANHA, etc.")
+    target_arrival_time: Optional[str] = Field(None, description="Horário marcado para a visita (HH:MM)")
+    has_time_conflict: bool = Field(False, description="Verdadeiro se houve atraso ou conflito em relação ao horário marcado")
+    time_conflict_message: Optional[str] = Field(None, description="Mensagem de alerta detalhada sobre atraso ou conflito viário")
 
 class OptimizeRouteResponse(BaseModel):
     total_time_minutes: float
@@ -39,6 +42,8 @@ class OptimizeRouteResponse(BaseModel):
     total_transit_minutes: Optional[float] = Field(None, description="Tempo total gasto em deslocamento viário")
     total_service_minutes: Optional[float] = Field(None, description="Tempo total gasto em atendimentos a clientes")
     peak_hours_encountered: Optional[int] = Field(0, description="Quantidade de trechos percorridos sob horário de pico")
+    has_any_time_conflict: bool = Field(False, description="Verdadeiro se há pelo menos um conflito/atraso de horário no itinerário")
+    time_conflict_count: int = Field(0, description="Quantidade total de paradas com conflito/atraso de horário")
 
 class ExportPdfRequest(BaseModel):
     seller_name: str = Field("Vendedor Fitoherb", description="Nome do vendedor")

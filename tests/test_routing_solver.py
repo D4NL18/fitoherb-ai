@@ -315,3 +315,49 @@ def test_recalculate_route_preserves_exact_order():
     assert resp.total_distance_km > 0
     assert resp.total_time_minutes > 0
     assert resp.geojson_geometry["type"] == "FeatureCollection"
+
+
+def test_optimize_route_detects_time_conflict():
+    from app.api.v1.routers.routing_router import optimize_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    # Cliente 1 às 13:00 com 50 min de atendimento (sai às 13:50).
+    # Cliente 2 marcado para 13:55 (impossível se o deslocamento for maior que 5 min).
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base", lat=-12.899, lon=-38.324),
+        stops=[
+            DeliveryStop(
+                id="s1", 
+                name="Cliente 1", 
+                lat=-12.899, 
+                lon=-38.324, 
+                service_duration_minutes=50,
+                target_arrival_time="13:00",
+                fixed_order=1
+            ),
+            DeliveryStop(
+                id="s2", 
+                name="Cliente 2", 
+                lat=-12.710, 
+                lon=-38.120, 
+                service_duration_minutes=30,
+                target_arrival_time="13:55",
+                fixed_order=2
+            )
+        ],
+        departure_time="12:00",
+        return_to_depot=True
+    )
+
+    resp = optimize_route(payload)
+    visit_stops = [s for s in resp.ordered_stops if s.action == "VISIT"]
+    assert len(visit_stops) == 2
+    # Cliente 2 deve acusar conflito de horário pois a saída do Cliente 1 é 13:50 e a viagem leva mais de 5 min
+    s2 = visit_stops[1]
+    assert s2.target_arrival_time == "13:55"
+    assert s2.has_time_conflict is True
+    assert s2.time_conflict_message is not None
+    assert "após o horário marcado" in s2.time_conflict_message
+    assert resp.has_any_time_conflict is True
+    assert resp.time_conflict_count >= 1
