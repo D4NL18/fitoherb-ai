@@ -4,6 +4,7 @@ from app.core.config import settings
 from .routing_chromosome import RoutingChromosome
 from .routing_operators import RoutingOperators
 from .routing_fitness import RoutingFitnessEvaluator
+from app.domains.routing.traffic_model import TrafficPredictor
 
 class RoutingGeneticSolver:
     def __init__(
@@ -81,18 +82,31 @@ class RoutingGeneticSolver:
                 curr_loc = seq[i]
             else:
                 if free_stops:
-                    critical_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "CRITICAL"]
-                    high_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "HIGH"]
-
-                    if critical_stops:
-                        candidates = critical_stops
-                    elif high_stops:
-                        candidates = high_stops
+                    # Prioridade Máxima: Paradas com horário marcado específico (target_arrival_time)
+                    timed_stops = [
+                        s for s in free_stops 
+                        if self.deliveries[s - 1].get("target_arrival_time")
+                    ]
+                    if timed_stops:
+                        # Ordena pelo horário marcado mais cedo
+                        timed_stops.sort(
+                            key=lambda s_idx: TrafficPredictor.parse_time_str(self.deliveries[s_idx - 1].get("target_arrival_time")) or 9999
+                        )
+                        nxt = timed_stops[0]
                     else:
-                        candidates = list(free_stops)
+                        critical_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "CRITICAL"]
+                        high_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "HIGH"]
+
+                        if critical_stops:
+                            candidates = critical_stops
+                        elif high_stops:
+                            candidates = high_stops
+                        else:
+                            candidates = list(free_stops)
+                        
+                        # Custo guloso: menor duração ajustada
+                        nxt = min(candidates, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
                     
-                    # Custo guloso: menor duração ajustada
-                    nxt = min(candidates, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
                     seq[i] = nxt
                     free_stops.remove(nxt)
                     curr_loc = nxt
