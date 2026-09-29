@@ -176,6 +176,7 @@ def _evaluate_ordered_route(
     total_transit_sec = 0.0
     total_service_min = 0.0
     peak_count = 0
+    time_conflict_count = 0
 
     departure_clock_str = TrafficPredictor.format_clock(dep_time_mins) if is_temporal_active else None
 
@@ -224,14 +225,32 @@ def _evaluate_ordered_route(
         adjusted_leg_sec = base_sec * traffic_k
         total_transit_sec += adjusted_leg_sec
 
+        actual_arrival_min = None
         if is_temporal_active and curr_clock_min is not None:
             curr_clock_min += (adjusted_leg_sec / 60.0)
+            actual_arrival_min = curr_clock_min
             arrival_clock_str = TrafficPredictor.format_clock(curr_clock_min)
         else:
             arrival_clock_str = None
 
         stop_data = payload.stops[node_idx - 1]
         
+        has_time_conflict = False
+        time_conflict_message = None
+
+        # Verificação de Inviabilidade / Conflito em relação ao horário marcado (Regra P-207)
+        if is_temporal_active and stop_data.target_arrival_time and actual_arrival_min is not None:
+            target_mins = TrafficPredictor.parse_time_str(stop_data.target_arrival_time)
+            if target_mins is not None:
+                if actual_arrival_min > target_mins:
+                    delay = int(round(actual_arrival_min - target_mins))
+                    has_time_conflict = True
+                    time_conflict_message = f"Previsão de chegada às {arrival_clock_str} ({delay} min após o horário marcado de {stop_data.target_arrival_time})"
+                    time_conflict_count += 1
+                elif actual_arrival_min < target_mins:
+                    # Chegada antecipada: aguarda o horário marcado para iniciar a visita
+                    curr_clock_min = float(target_mins)
+
         if is_temporal_active:
             service_mins = stop_data.service_duration_minutes if (stop_data.service_duration_minutes and stop_data.service_duration_minutes > 0) else avg_service_min
             total_service_min += service_mins
@@ -260,7 +279,10 @@ def _evaluate_ordered_route(
             estimated_departure_clock=departure_clock_str,
             service_duration_minutes=service_mins,
             traffic_factor=traffic_k if is_temporal_active else None,
-            traffic_condition=traffic_cond
+            traffic_condition=traffic_cond,
+            target_arrival_time=stop_data.target_arrival_time,
+            has_time_conflict=has_time_conflict,
+            time_conflict_message=time_conflict_message
         ))
         waypoints_for_geo.append((stop_data.lat, stop_data.lon))
         prev_node = node_idx
@@ -329,7 +351,9 @@ def _evaluate_ordered_route(
         estimated_finish_clock=TrafficPredictor.format_clock(curr_clock_min) if is_temporal_active else None,
         total_transit_minutes=round(total_transit_sec / 60.0, 1) if is_temporal_active else None,
         total_service_minutes=round(float(total_service_min), 1) if is_temporal_active else None,
-        peak_hours_encountered=peak_count if is_temporal_active else 0
+        peak_hours_encountered=peak_count if is_temporal_active else 0,
+        has_any_time_conflict=(time_conflict_count > 0),
+        time_conflict_count=time_conflict_count
     )
 
 @router.post("/export-pdf")

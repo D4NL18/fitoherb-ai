@@ -30,3 +30,7 @@ class DeliveryStop(LocationPoint):
         ge=0, 
         description="Tempo de atendimento no cliente em minutos (dwell time)"
     )
+    target_arrival_time: Optional[str] = Field(
+        None,
+        description="Horário específico marcado para chegada (formato HH:MM)"
+    )
