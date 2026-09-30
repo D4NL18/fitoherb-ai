@@ -361,3 +361,102 @@ def test_optimize_route_detects_time_conflict():
     assert "após o horário marcado" in s2.time_conflict_message
     assert resp.has_any_time_conflict is True
     assert resp.time_conflict_count >= 1
+
+def test_target_arrival_time_proximity_and_fills_morning_gap():
+    """
+    Regra P-106 refinada: Se o vendedor sai às 08:00 e marca um cliente para às 13:00,
+    o algoritmo NÃO deve colocar esse cliente às 09:25 com horas de espera inútil.
+    Ele deve alocar visitas aos outros clientes pela manhã e chegar ao compromisso
+    o mais próximo possível das 13:00 (sempre antes ou pontual, ex: entre 12:00 e 13:00).
+    """
+    from app.api.v1.routers.routing_router import optimize_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base Lauro", lat=-12.899, lon=-38.324),
+        stops=[
+            # 4 paradas regulares de 60 min pela manhã
+            DeliveryStop(id="s1", name="Loja A", lat=-12.890, lon=-38.310, service_duration_minutes=60),
+            DeliveryStop(id="s2", name="Loja B", lat=-12.880, lon=-38.300, service_duration_minutes=60),
+            DeliveryStop(id="s3", name="Loja C", lat=-12.870, lon=-38.290, service_duration_minutes=60),
+            DeliveryStop(id="s4", name="Loja D", lat=-12.860, lon=-38.280, service_duration_minutes=60),
+            # 1 parada com horário marcado às 13:00
+            DeliveryStop(
+                id="s_target", 
+                name="Cliente Especial 13h", 
+                lat=-12.850, 
+                lon=-38.270, 
+                service_duration_minutes=60,
+                target_arrival_time="13:00"
+            ),
+        ],
+        departure_time="08:00",
+        return_to_depot=True
+    )
+
+    resp = optimize_route(payload)
+    visit_stops = [s for s in resp.ordered_stops if s.action == "VISIT"]
+    assert len(visit_stops) == 5
+
+    # Encontra a parada marcada para às 13:00
+    target_stop = next(s for s in visit_stops if s.id == "s_target")
+    
+    # Ela NÃO deve ser a primeira nem a segunda parada da manhã!
+    assert target_stop.step >= 3, f"Parada das 13h não deve ser colocada no início da manhã (foi step {target_stop.step})"
+
+    # O horário de chegada deve ser antes ou igual a 13:00, e próximo (após 11:30)
+    arr_str = target_stop.estimated_arrival_clock
+    assert arr_str is not None
+    hour, minute = map(int, arr_str.split(":"))
+    arr_minutes = hour * 60 + minute
+
+    target_minutes = 13 * 60 # 780
+    assert arr_minutes <= target_minutes, f"Previsão de chegada {arr_str} não pode ultrapassar as 13:00"
+    assert arr_minutes >= 11 * 60 + 30, f"Previsão de chegada {arr_str} ficou muito adiantada (deveria preencher a manhã e chegar perto das 13:00)"
+
+def test_target_arrival_time_7_stops_morning_detour_and_punctual_return():
+    """
+    Cenário real: Vendedor sai às 08:00 com 7 paradas, sendo uma marcada para às 13:00.
+    O algoritmo deve atender paradas distantes pela manhã, retornar pontualmente para
+    o cliente das 13:00 (chegada entre 12:40 e 13:00), e concluir a rota em horário comercial normal.
+    """
+    from app.api.v1.routers.routing_router import optimize_route
+    from app.domains.routing.schemas.routing_dto import OptimizeRouteRequest
+    from app.domains.routing.models.point import LocationPoint, DeliveryStop
+
+    payload = OptimizeRouteRequest(
+        depot=LocationPoint(id="base", name="Base Lauro", lat=-12.8992, lon=-38.3242),
+        stops=[
+            DeliveryStop(id="s1", name="Parada 1", lat=-12.9050, lon=-38.3300, service_duration_minutes=60),
+            DeliveryStop(id="s2_cassange", name="Cassange 13h", lat=-12.8850, lon=-38.3600, service_duration_minutes=60, target_arrival_time="13:00"),
+            DeliveryStop(id="s3", name="Parada 3", lat=-12.9800, lon=-38.4500, service_duration_minutes=60),
+            DeliveryStop(id="s4", name="Parada 4", lat=-12.9900, lon=-38.4800, service_duration_minutes=60),
+            DeliveryStop(id="s5", name="Parada 5", lat=-13.0000, lon=-38.5100, service_duration_minutes=60),
+            DeliveryStop(id="s6", name="Parada 6", lat=-12.9700, lon=-38.4600, service_duration_minutes=60),
+            DeliveryStop(id="s7", name="Parada 7", lat=-12.9600, lon=-38.4400, service_duration_minutes=60),
+        ],
+        departure_time="08:00",
+        return_to_depot=True
+    )
+
+    resp = optimize_route(payload)
+    visit_stops = [s for s in resp.ordered_stops if s.action == "VISIT"]
+    assert len(visit_stops) == 7
+
+    target_stop = next(s for s in visit_stops if s.id == "s2_cassange")
+    # Cassange NÃO deve ser a parada 1 nem a 2 (não deve chegar às 08h ou 09h!)
+    assert target_stop.step >= 4, f"Cassange deveria ser visitado no meio do dia, mas foi step {target_stop.step}"
+
+    arr_str = target_stop.estimated_arrival_clock
+    hour, minute = map(int, arr_str.split(":"))
+    arr_minutes = hour * 60 + minute
+    # Chegada deve ser antes ou em ponto às 13:00 e não mais cedo que 12:40
+    assert arr_minutes <= 13 * 60, f"Chegada {arr_str} não pode atrasar"
+    assert arr_minutes >= 12 * 60 + 30, f"Chegada {arr_str} foi muito adiantada (deveria chegar próximo às 13h)"
+
+    # A jornada não deve se estender noite adentro por ociosidade matutina (deve terminar antes das 18:30)
+    fin_hour, fin_min = map(int, resp.estimated_finish_clock.split(":"))
+    assert (fin_hour * 60 + fin_min) <= 18 * 60 + 30, f"Jornada terminou tarde demais: {resp.estimated_finish_clock}"
+
+
