@@ -59,6 +59,102 @@ class RoutingGeneticSolver:
         self.history: List[float] = []
         self.best_chromosome: Optional[RoutingChromosome] = None
 
+    def _advance_clock_for_stop(self, from_loc: int, to_loc: int, curr_clock: Optional[float]) -> Optional[float]:
+        """Avança o relógio acumulado considerando tempo de viagem, espera pontual e duração do serviço."""
+        if curr_clock is None:
+            return None
+
+        travel_min = (self.evaluator.durations[from_loc][to_loc] / 60.0)
+        clock = curr_clock + travel_min
+        target_time_str = self.deliveries[to_loc - 1].get("target_arrival_time")
+        if target_time_str:
+            t_min = TrafficPredictor.parse_time_str(target_time_str)
+            if t_min and clock < t_min:
+                clock = float(t_min)
+        srv = self.deliveries[to_loc - 1].get("service_duration_minutes") or self.evaluator.default_service_minutes
+        return clock + srv
+
+    def _select_candidate_by_priority_or_distance(self, candidates: list[int], curr_loc: int) -> int:
+        """Seleciona o próximo ponto priorizando urgência (CRITICAL > HIGH) e menor distância."""
+        critical_stops = [s for s in candidates if self.deliveries[s - 1].get("priority") == "CRITICAL"]
+        if critical_stops:
+            return min(critical_stops, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
+
+        high_stops = [s for s in candidates if self.deliveries[s - 1].get("priority") == "HIGH"]
+        if high_stops:
+            return min(high_stops, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
+
+        return min(candidates, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
+
+    def _find_feasible_stops_before_timed(
+        self,
+        curr_loc: int,
+        curr_clock: float,
+        free_stops: set[int],
+        earliest_timed: int,
+        earliest_target: float
+    ) -> list[int]:
+        """Filtra paradas livres que cabem na rota antes do horário marcado sem atrasar o compromisso."""
+        feasible = []
+        for cand in free_stops:
+            if self.deliveries[cand - 1].get("target_arrival_time"):
+                continue
+            t_to_cand = self.evaluator.durations[curr_loc][cand] / 60.0
+            srv_cand = self.deliveries[cand - 1].get("service_duration_minutes") or self.evaluator.default_service_minutes
+            t_cand_to_timed = self.evaluator.durations[cand][earliest_timed] / 60.0
+            arrival_after_cand = curr_clock + t_to_cand + srv_cand + t_cand_to_timed
+            if arrival_after_cand <= earliest_target + 5.0:
+                feasible.append(cand)
+        return feasible
+
+    def _pick_best_timed_candidate(
+        self,
+        curr_loc: int,
+        curr_clock: Optional[float],
+        free_stops: set[int],
+        timed_stops: list[int]
+    ) -> Optional[int]:
+        """Escolhe o próximo ponto considerando compromissos com horário marcado e folga temporal."""
+        if not timed_stops:
+            return None
+
+        timed_stops.sort(
+            key=lambda s_idx: TrafficPredictor.parse_time_str(self.deliveries[s_idx - 1].get("target_arrival_time")) or 9999
+        )
+        if curr_clock is None:
+            return timed_stops[0]
+
+        earliest_timed = timed_stops[0]
+        earliest_target = TrafficPredictor.parse_time_str(self.deliveries[earliest_timed - 1].get("target_arrival_time"))
+        if earliest_target is None:
+            return earliest_timed
+
+        direct_travel = self.evaluator.durations[curr_loc][earliest_timed] / 60.0
+        slack = earliest_target - (curr_clock + direct_travel)
+        if slack <= 25.0:
+            return earliest_timed
+
+        feasible_before = self._find_feasible_stops_before_timed(
+            curr_loc, curr_clock, free_stops, earliest_timed, earliest_target
+        )
+        if feasible_before:
+            return self._select_candidate_by_priority_or_distance(feasible_before, curr_loc)
+
+        return earliest_timed
+
+    def _pick_next_hotstart_stop(
+        self,
+        curr_loc: int,
+        curr_clock: Optional[float],
+        free_stops: set[int]
+    ) -> int:
+        """Determina a próxima parada do hotstart com base em horários marcados ou guloso por prioridade."""
+        timed_stops = [s for s in free_stops if self.deliveries[s - 1].get("target_arrival_time")]
+        selected = self._pick_best_timed_candidate(curr_loc, curr_clock, free_stops, timed_stops)
+        if selected is not None:
+            return selected
+        return self._select_candidate_by_priority_or_distance(list(free_stops), curr_loc)
+
     def _generate_nearest_neighbor_hotstart(self) -> RoutingChromosome:
         """
         Hotstart Heurístico com Respeito a Posições Fixas e Varredura Progressiva:
@@ -82,104 +178,15 @@ class RoutingGeneticSolver:
         for i in range(self.num_stops):
             if seq[i] != 0:
                 nxt = seq[i]
-                if curr_clock is not None:
-                    travel_min = (self.evaluator.durations[curr_loc][nxt] / 60.0)
-                    curr_clock += travel_min
-                    target_time_str = self.deliveries[nxt - 1].get("target_arrival_time")
-                    if target_time_str:
-                        t_min = TrafficPredictor.parse_time_str(target_time_str)
-                        if t_min and curr_clock < t_min:
-                            curr_clock = float(t_min)
-                    srv = self.deliveries[nxt - 1].get("service_duration_minutes") or self.evaluator.default_service_minutes
-                    curr_clock += srv
-                curr_loc = nxt
             else:
-                if free_stops:
-                    timed_stops = [
-                        s for s in free_stops 
-                        if self.deliveries[s - 1].get("target_arrival_time")
-                    ]
+                if not free_stops:
+                    break
+                nxt = self._pick_next_hotstart_stop(curr_loc, curr_clock, free_stops)
+                seq[i] = nxt
+                free_stops.remove(nxt)
 
-                    selected = None
-                    if timed_stops and curr_clock is not None:
-                        # Ordena paradas com horário marcado pelo horário mais cedo
-                        timed_stops.sort(
-                            key=lambda s_idx: TrafficPredictor.parse_time_str(self.deliveries[s_idx - 1].get("target_arrival_time")) or 9999
-                        )
-                        earliest_timed = timed_stops[0]
-                        earliest_target = TrafficPredictor.parse_time_str(self.deliveries[earliest_timed - 1].get("target_arrival_time"))
-
-                        if earliest_target is not None:
-                            direct_travel = self.evaluator.durations[curr_loc][earliest_timed] / 60.0
-                            est_arr = curr_clock + direct_travel
-                            slack = earliest_target - est_arr
-
-                            # Se a folga até o horário marcado for pequena (<= 25 min) ou se já estamos atrasados,
-                            # deve convergir imediatamente para a parada marcada agora!
-                            if slack <= 25.0:
-                                selected = earliest_timed
-                            else:
-                                # Há folga no relógio (> 25 min). Verifica se outros nós livres cabem antes
-                                non_timed_stops = [s for s in free_stops if s not in timed_stops]
-                                feasible_before = []
-                                for cand in non_timed_stops:
-                                    t_to_cand = self.evaluator.durations[curr_loc][cand] / 60.0
-                                    srv_cand = self.deliveries[cand - 1].get("service_duration_minutes") or self.evaluator.default_service_minutes
-                                    t_cand_to_timed = self.evaluator.durations[cand][earliest_timed] / 60.0
-                                    arrival_at_timed_after_cand = curr_clock + t_to_cand + srv_cand + t_cand_to_timed
-                                    # Se a visita cabe antes do horário marcado (com margem de segurança de 5 min)
-                                    if arrival_at_timed_after_cand <= earliest_target + 5.0:
-                                        feasible_before.append(cand)
-
-                                if feasible_before:
-                                    # Entre os nós que cabem antes, prioriza CRITICAL/HIGH ou menor distância
-                                    crit = [s for s in feasible_before if self.deliveries[s - 1].get("priority") == "CRITICAL"]
-                                    high = [s for s in feasible_before if self.deliveries[s - 1].get("priority") == "HIGH"]
-                                    if crit:
-                                        selected = min(crit, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
-                                    elif high:
-                                        selected = min(high, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
-                                    else:
-                                        selected = min(feasible_before, key=lambda s_idx: self.evaluator.durations[curr_loc][s_idx])
-                                else:
-                                    # Nenhum outro nó cabe sem estourar o horário marcado -> atende o marcado agora
-                                    selected = earliest_timed
-
-                    elif timed_stops and curr_clock is None:
-                        timed_stops.sort(
-                            key=lambda s_idx: TrafficPredictor.parse_time_str(self.deliveries[s_idx - 1].get("target_arrival_time")) or 9999
-                        )
-                        selected = timed_stops[0]
-
-                    if selected is None:
-                        critical_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "CRITICAL"]
-                        high_stops = [s for s in free_stops if self.deliveries[s - 1].get("priority") == "HIGH"]
-
-                        if critical_stops:
-                            candidates = critical_stops
-                        elif high_stops:
-                            candidates = high_stops
-                        else:
-                            candidates = list(free_stops)
-
-                        selected = min(candidates, key=lambda s_idx, loc=curr_loc: self.evaluator.durations[loc][s_idx])
-
-                    nxt = selected
-                    seq[i] = nxt
-                    free_stops.remove(nxt)
-
-                    if curr_clock is not None:
-                        travel_min = (self.evaluator.durations[curr_loc][nxt] / 60.0)
-                        curr_clock += travel_min
-                        target_time_str = self.deliveries[nxt - 1].get("target_arrival_time")
-                        if target_time_str:
-                            t_min = TrafficPredictor.parse_time_str(target_time_str)
-                            if t_min and curr_clock < t_min:
-                                curr_clock = float(t_min)
-                        srv = self.deliveries[nxt - 1].get("service_duration_minutes") or self.evaluator.default_service_minutes
-                        curr_clock += srv
-
-                    curr_loc = nxt
+            curr_clock = self._advance_clock_for_stop(curr_loc, nxt, curr_clock)
+            curr_loc = nxt
 
         return RoutingChromosome(sequence=seq)
 
