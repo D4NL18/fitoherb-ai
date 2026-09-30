@@ -32,6 +32,108 @@ class RoutingFitnessEvaluator:
         self.points_cities = points_cities or ([""] * len(durations_matrix_sec))
         self.coordinates = coordinates or []
 
+    def _calculate_overshoot_penalty(
+        self,
+        curr_node: int,
+        next_node: int,
+        unvisited: set,
+        curr_clock_min: Optional[float]
+    ) -> float:
+        if not self.coordinates or len(self.coordinates) <= max(curr_node, next_node):
+            return 0.0
+
+        p_curr = self.coordinates[curr_node]
+        p_next = self.coordinates[next_node]
+        v_x = p_next[0] - p_curr[0]
+        v_y = p_next[1] - p_curr[1]
+        v_len = math.hypot(v_x, v_y)
+        if v_len <= 0.05:
+            return 0.0
+
+        overshoot = 0.0
+        for cand_node in unvisited:
+            if cand_node in self.fixed_positions.values():
+                continue
+            cand_deliv = self.deliveries[cand_node - 1] if (cand_node - 1) < len(self.deliveries) else {}
+            cand_target_str = cand_deliv.get("target_arrival_time")
+            if cand_target_str and curr_clock_min is not None:
+                cand_target_min = TrafficPredictor.parse_time_str(cand_target_str)
+                if cand_target_min is not None and cand_target_min > (curr_clock_min + 30.0):
+                    continue
+
+            p_cand = self.coordinates[cand_node]
+            c_x = p_cand[0] - p_curr[0]
+            c_y = p_cand[1] - p_curr[1]
+            c_len = math.hypot(c_x, c_y)
+            if 0.02 < c_len < v_len:
+                dot = (v_x * c_x + v_y * c_y) / (v_len * c_len)
+                if dot > 0.85:
+                    overshoot += 3500.0
+
+        return overshoot
+
+    def _evaluate_arrival_window(
+        self,
+        target_time_str: Optional[str],
+        curr_clock_min: Optional[float]
+    ) -> tuple[float, float, Optional[float]]:
+        """
+        Calcula penalidades de atraso ou adiantamento excessivo conforme Regra P-106.
+        Retorna (delay_penalty, early_penalty, updated_clock_min).
+        """
+        if curr_clock_min is None or not target_time_str:
+            return 0.0, 0.0, curr_clock_min
+
+        target_min = TrafficPredictor.parse_time_str(target_time_str)
+        if target_min is None:
+            return 0.0, 0.0, curr_clock_min
+
+        if curr_clock_min > target_min:
+            delay_min = curr_clock_min - target_min
+            return 100000.0 + (delay_min * 20000.0), 0.0, curr_clock_min
+
+        if curr_clock_min < target_min:
+            early_min = target_min - curr_clock_min
+            courtesy_margin = 15.0
+            early_penalty = 0.0
+            if early_min > courtesy_margin:
+                excess_early = early_min - courtesy_margin
+                early_penalty = 2000.0 + (excess_early * 400.0)
+            return 0.0, early_penalty, float(target_min)
+
+        return 0.0, 0.0, curr_clock_min
+
+    @staticmethod
+    def _evaluate_priority_penalties(priority: str, pos: int, total_transit_sec: float) -> float:
+        if priority == "CRITICAL":
+            return (total_transit_sec * 4.0) + (pos * 15000.0)
+        elif priority == "HIGH":
+            return (total_transit_sec * 1.5) + (pos * 4000.0)
+        return 0.0
+
+    def _calculate_leg_transit(
+        self,
+        curr_node: int,
+        next_node: int,
+        curr_clock_min: Optional[float]
+    ) -> tuple[float, float]:
+        leg_dist_m = self.distances[curr_node][next_node]
+        leg_dist_km = leg_dist_m / 1000.0
+        base_duration_sec = self.durations[curr_node][next_node]
+
+        orig_city = self.points_cities[curr_node] if curr_node < len(self.points_cities) else self.base_city
+        dest_city = self.points_cities[next_node] if next_node < len(self.points_cities) else self.base_city
+
+        traffic_k, _ = TrafficPredictor.get_traffic_multiplier(
+            time_minutes_from_midnight=curr_clock_min,
+            distance_km=leg_dist_km,
+            origin_city=orig_city,
+            dest_city=dest_city,
+            base_city=self.base_city
+        )
+        adjusted_leg_sec = base_duration_sec * traffic_k
+        return adjusted_leg_sec, leg_dist_m
+
     def evaluate(self, chromosome: RoutingChromosome) -> float:
         seq = chromosome.sequence
         n = len(seq)
@@ -45,6 +147,7 @@ class RoutingFitnessEvaluator:
         penalties = 0.0
         priority_penalties = 0.0
         overshoot_penalties = 0.0
+        early_arrival_penalties = 0.0
 
         # 1. Defesa em Profundidade: Posições fixadas manualmente
         for pos, expected_node in self.fixed_positions.items():
@@ -56,123 +159,57 @@ class RoutingFitnessEvaluator:
         total_transit_sec = 0.0
         total_distance_m = 0.0
 
-        # Conjunto de nós ainda não visitados para cálculo de anti-overshoot
         unvisited = set(seq)
 
         for pos, next_node in enumerate(seq):
             unvisited.discard(next_node)
-            leg_dist_m = self.distances[curr_node][next_node]
-            leg_dist_km = leg_dist_m / 1000.0
-            base_duration_sec = self.durations[curr_node][next_node]
-
-            # Cidades de origem e destino
-            orig_city = self.points_cities[curr_node] if curr_node < len(self.points_cities) else self.base_city
-            dest_city = self.points_cities[next_node] if next_node < len(self.points_cities) else self.base_city
-
-            # Previsão de Trânsito Dinâmica baseada no relógio atual e tamanho da cidade
-            traffic_k, traffic_cond = TrafficPredictor.get_traffic_multiplier(
-                time_minutes_from_midnight=curr_clock_min,
-                distance_km=leg_dist_km,
-                origin_city=orig_city,
-                dest_city=dest_city,
-                base_city=self.base_city
-            )
-
-            adjusted_leg_sec = base_duration_sec * traffic_k
+            adjusted_leg_sec, leg_dist_m = self._calculate_leg_transit(curr_node, next_node, curr_clock_min)
             total_transit_sec += adjusted_leg_sec
             total_distance_m += leg_dist_m
 
-            # Avança o relógio com o tempo de deslocamento (se agendamento ativo)
             if curr_clock_min is not None:
                 curr_clock_min += (adjusted_leg_sec / 60.0)
 
-            # 2. Anti-Overshoot / Anti-Backtracking em Corredores:
-            # Verifica se o salto de curr_node -> next_node 'passou direto' por algum nó não visitado
-            # que estava no mesmo corredor e mais próximo
-            if self.coordinates and len(self.coordinates) > max(curr_node, next_node):
-                p_curr = self.coordinates[curr_node]
-                p_next = self.coordinates[next_node]
-                v_x = p_next[0] - p_curr[0]
-                v_y = p_next[1] - p_curr[1]
-                v_len = math.hypot(v_x, v_y)
+            # 2. Anti-Overshoot / Anti-Backtracking em Corredores
+            overshoot_penalties += self._calculate_overshoot_penalty(
+                curr_node, next_node, unvisited, curr_clock_min
+            )
 
-                if v_len > 0.05: # acima de ~5 km
-                    for cand_node in unvisited:
-                        # Se cand_node não tem trava de ordem específica posterior
-                        if cand_node not in self.fixed_positions.values():
-                            p_cand = self.coordinates[cand_node]
-                            c_x = p_cand[0] - p_curr[0]
-                            c_y = p_cand[1] - p_curr[1]
-                            c_len = math.hypot(c_x, c_y)
-
-                            if 0.02 < c_len < v_len:
-                                dot = (v_x * c_x + v_y * c_y) / (v_len * c_len)
-                                # Se o ponto candidato está praticamente alinhado no caminho à frente (cos > 0.85)
-                                if dot > 0.85:
-                                    # Penalidade por passar direto e ter que voltar depois
-                                    overshoot_penalties += 3500.0
-
-            # 3. Tempo de Atendimento (Dwell Time) e Janela de Horário Marcado
+            # 3. Tempo de Atendimento e Horário Marcado (Regra P-106)
             delivery_idx = next_node - 1
             if 0 <= delivery_idx < len(self.deliveries):
                 deliv = self.deliveries[delivery_idx]
+                target_str = deliv.get("target_arrival_time")
+
+                d_pen, e_pen, curr_clock_min = self._evaluate_arrival_window(target_str, curr_clock_min)
+                penalties += d_pen
+                early_arrival_penalties += e_pen
+
                 service_min = deliv.get("service_duration_minutes") or self.default_service_minutes
-                target_time_str = deliv.get("target_arrival_time")
-
-                if curr_clock_min is not None and target_time_str:
-                    target_min = TrafficPredictor.parse_time_str(target_time_str)
-                    if target_min is not None:
-                        # Se chegou com atraso em relação ao horário marcado: penalidade máxima
-                        if curr_clock_min > target_min:
-                            delay_min = curr_clock_min - target_min
-                            penalties += 50000.0 + (delay_min * 10000.0)
-                        elif curr_clock_min < target_min:
-                            # Chegada antecipada: aguarda o horário marcado para iniciar o atendimento
-                            curr_clock_min = float(target_min)
-
                 if curr_clock_min is not None:
                     curr_clock_min += service_min
 
-                # Priorização de Atendimento
                 prio = deliv.get("priority", "REGULAR")
-                if prio == "CRITICAL":
-                    # Penalidade pesada por postergar clientes urgentes
-                    priority_penalties += (total_transit_sec * 4.0) + (pos * 15000.0)
-                elif prio == "HIGH":
-                    priority_penalties += (total_transit_sec * 1.5) + (pos * 4000.0)
+                priority_penalties += self._evaluate_priority_penalties(prio, pos, total_transit_sec)
 
             curr_node = next_node
 
         # 4. Retorno ao Depósito / Base
         if self.return_to_depot:
-            leg_dist_m = self.distances[curr_node][0]
-            leg_dist_km = leg_dist_m / 1000.0
-            base_duration_sec = self.durations[curr_node][0]
-
-            orig_city = self.points_cities[curr_node] if curr_node < len(self.points_cities) else self.base_city
-            dest_city = self.base_city
-
-            traffic_k, traffic_cond = TrafficPredictor.get_traffic_multiplier(
-                time_minutes_from_midnight=curr_clock_min,
-                distance_km=leg_dist_km,
-                origin_city=orig_city,
-                dest_city=dest_city,
-                base_city=self.base_city
-            )
-            adjusted_leg_sec = base_duration_sec * traffic_k
+            adjusted_leg_sec, leg_dist_m = self._calculate_leg_transit(curr_node, 0, curr_clock_min)
             total_transit_sec += adjusted_leg_sec
             total_distance_m += leg_dist_m
             if curr_clock_min is not None:
                 curr_clock_min += (adjusted_leg_sec / 60.0)
 
-        # 5. Função Objetivo TDVRP Multiobjetivo:
-        # Tempo viário com trânsito real + Distância ponderada + Penalidades + Anti-Overshoot
+        # 5. Função Objetivo TDVRP Multiobjetivo
         fitness = (
             total_transit_sec +
             ((total_distance_m / 1000.0) * 0.15) +
             penalties +
             priority_penalties +
-            overshoot_penalties
+            overshoot_penalties +
+            early_arrival_penalties
         )
 
         chromosome.fitness = round(fitness, 2)
@@ -185,5 +222,7 @@ class RoutingFitnessEvaluator:
             chromosome.penalties["priority_delay"] = priority_penalties
         if overshoot_penalties > 0:
             chromosome.penalties["corridor_overshoot"] = overshoot_penalties
+        if early_arrival_penalties > 0:
+            chromosome.penalties["excessive_early_arrival"] = early_arrival_penalties
 
         return chromosome.fitness
