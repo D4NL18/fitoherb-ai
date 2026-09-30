@@ -65,3 +65,23 @@ Este documento define as regras de negócio normativas que regem o microserviço
    - Resumo consolidado: Distância total percorrida (km) e tempo estimado de trânsito (horas/minutos).
    - Tabela sequencial com número da parada, título do cliente e endereço completo legível (rua, número, bairro e cidade).
 3. **Privacidade e Usabilidade:** É terminantemente proibido exibir dados de latitude e longitude na interface de usuário e no PDF gerado. As coordenadas devem permanecer restritas aos cálculos viários matemáticos internos.
+
+---
+
+## [P-106] Horário Marcado no Cliente (Prioridade Máxima) e Detecção de Inviabilidade Viária
+1. **Definição de Horário Específico:** O vendedor pode estipular um horário alvo de chegada (`target_arrival_time`, no formato `HH:MM`) em qualquer cliente/parada de visita ou intervalo de almoço.
+2. **Prioridade Máxima no Algoritmo Genético:** O motor de otimização prioriza a chegada no horário marcado como restrição de máxima prioridade, ordenando os pontos cronologicamente e aplicando penalidade extrema caso a previsão viária atinja o ponto após o horário marcado.
+3. **Minimização de Ociosidade e Chegada Otimizada Próxima ao Horário Marcado:**
+   - O algoritmo genético penaliza severamente a chegada excessivamente antecipada ao horário marcado (`early_arrival_penalties`), além de uma margem de cortesia/segurança de 15 minutos.
+   - Isso incentiva ativamente o algoritmo a preencher os períodos da manhã/tarde alocando outras paradas comerciais viáveis no trajeto, convergindo para o ponto marcado o mais próximo possível do horário estipulado (sempre antes ou pontual, ex: 10 a 15 minutos antes).
+   - O vendedor pode ser roteado para pontos distantes no caminho pela manhã e depois retornar ao local marcado pontualmente para a visita.
+   - Pontos com horário marcado futuro (> 30 min adiante do relógio atual) não sofrem penalidades do filtro anti-overshoot antes do seu horário de atendimento.
+4. **Validação Imediata no Cadastro/Edição de Ponto:**
+   - Se o usuário tentar agendar dois ou mais pontos cujos intervalos de atendimento se sobreponham (ex: Ponto A às 13:00 com 60 min de visita, e Ponto B às 13:30), o sistema emite um alerta imediato na janela de cadastro/edição advertindo que é humanamente impossível estar em ambos os locais simultaneamente.
+5. **Detecção e Destaque de Inviabilidade no Itinerário da IA:**
+   - Se, após a resolução viária com trânsito e tempos de deslocamento reais entre os endereços, for impossível chegar a tempo (ex: Ponto A às 13:00 com 50 min de atendimento + 20 min de deslocamento = chegada às 14:10 para horário marcado de 14:00), o sistema deve:
+     - Sinalizar `has_any_time_conflict = true` e total de conflitos `time_conflict_count`.
+     - Exibir um banner de alerta vermelho em destaque no topo da coluna de itinerário da IA.
+     - Destacar o card da parada com borda e fundo avermelhados e pílula pulsante contendo a mensagem explicativa e o atraso em minutos (ex: *"Previsão de chegada às 14:10 (10 min após o horário marcado de 14:00)"*).
+     - Quando o itinerário conseguir cumprir o horário marcado com sucesso, exibir uma pílula verde de confirmação (*"Marcado: 14:00 (No Horário)"*).
+

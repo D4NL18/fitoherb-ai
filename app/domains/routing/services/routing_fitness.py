@@ -45,6 +45,7 @@ class RoutingFitnessEvaluator:
         penalties = 0.0
         priority_penalties = 0.0
         overshoot_penalties = 0.0
+        early_arrival_penalties = 0.0
 
         # 1. Defesa em Profundidade: Posições fixadas manualmente
         for pos, expected_node in self.fixed_positions.items():
@@ -100,6 +101,15 @@ class RoutingFitnessEvaluator:
                     for cand_node in unvisited:
                         # Se cand_node não tem trava de ordem específica posterior
                         if cand_node not in self.fixed_positions.values():
+                            # Se o nó candidato possui horário marcado bem adiante no tempo (> 30 min),
+                            # é legítimo e desejável passar direto por ele agora para atender outros pontos antes
+                            cand_deliv = self.deliveries[cand_node - 1] if (cand_node - 1) < len(self.deliveries) else {}
+                            cand_target_str = cand_deliv.get("target_arrival_time")
+                            if cand_target_str and curr_clock_min is not None:
+                                cand_target_min = TrafficPredictor.parse_time_str(cand_target_str)
+                                if cand_target_min is not None and cand_target_min > (curr_clock_min + 30.0):
+                                    continue
+
                             p_cand = self.coordinates[cand_node]
                             c_x = p_cand[0] - p_curr[0]
                             c_y = p_cand[1] - p_curr[1]
@@ -112,7 +122,7 @@ class RoutingFitnessEvaluator:
                                     # Penalidade por passar direto e ter que voltar depois
                                     overshoot_penalties += 3500.0
 
-            # 3. Tempo de Atendimento (Dwell Time) e Janela de Horário Marcado
+            # 3. Tempo de Atendimento (Dwell Time) e Janela de Horário Marcado (Regra P-106)
             delivery_idx = next_node - 1
             if 0 <= delivery_idx < len(self.deliveries):
                 deliv = self.deliveries[delivery_idx]
@@ -125,8 +135,16 @@ class RoutingFitnessEvaluator:
                         # Se chegou com atraso em relação ao horário marcado: penalidade máxima
                         if curr_clock_min > target_min:
                             delay_min = curr_clock_min - target_min
-                            penalties += 50000.0 + (delay_min * 10000.0)
+                            penalties += 100000.0 + (delay_min * 20000.0)
                         elif curr_clock_min < target_min:
+                            early_min = target_min - curr_clock_min
+                            # Margem de cortesia/segurança ideal: até 15 minutos de antecedência é pontualidade exemplar
+                            courtesy_margin = 15.0
+                            if early_min > courtesy_margin:
+                                excess_early = early_min - courtesy_margin
+                                # Penalidade pesada por ociosidade / má utilização do tempo da jornada
+                                early_arrival_penalties += 2000.0 + (excess_early * 400.0)
+
                             # Chegada antecipada: aguarda o horário marcado para iniciar o atendimento
                             curr_clock_min = float(target_min)
 
@@ -166,13 +184,14 @@ class RoutingFitnessEvaluator:
                 curr_clock_min += (adjusted_leg_sec / 60.0)
 
         # 5. Função Objetivo TDVRP Multiobjetivo:
-        # Tempo viário com trânsito real + Distância ponderada + Penalidades + Anti-Overshoot
+        # Tempo viário com trânsito real + Distância ponderada + Penalidades + Anti-Overshoot + Ociosidade
         fitness = (
             total_transit_sec +
             ((total_distance_m / 1000.0) * 0.15) +
             penalties +
             priority_penalties +
-            overshoot_penalties
+            overshoot_penalties +
+            early_arrival_penalties
         )
 
         chromosome.fitness = round(fitness, 2)
@@ -185,5 +204,7 @@ class RoutingFitnessEvaluator:
             chromosome.penalties["priority_delay"] = priority_penalties
         if overshoot_penalties > 0:
             chromosome.penalties["corridor_overshoot"] = overshoot_penalties
+        if early_arrival_penalties > 0:
+            chromosome.penalties["excessive_early_arrival"] = early_arrival_penalties
 
         return chromosome.fitness
