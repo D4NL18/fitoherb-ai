@@ -428,54 +428,136 @@ def search_address_proxy(
             "address": address
         }
 
+    def _normalize_pt(text: str) -> str:
+        if not text:
+            return ""
+        import unicodedata
+        s = unicodedata.normalize("NFD", text)
+        s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+        return s.lower().strip()
+
+    def _generate_pt_variants(text: str) -> list[str]:
+        cleaned = text.strip()
+        if not cleaned:
+            return []
+        variants = [cleaned]
+        norm = _normalize_pt(cleaned)
+        if norm and norm not in variants:
+            variants.append(norm)
+
+        # Expansão fonética e alternâncias ortográficas comuns em PT-BR:
+        # 1. Ditongos e nasais (ã / an / am / oa / ua)
+        # Ex: itapuã <-> itapoan <-> itapuan <-> itapua
+        expanded = set(variants)
+        for v in list(variants):
+            if "ua" in v:
+                expanded.add(v.replace("ua", "oa"))
+            if "oa" in v:
+                expanded.add(v.replace("oa", "ua"))
+            if v.endswith("oan"):
+                expanded.add(v[:-3] + "uan")
+                expanded.add(v[:-3] + "ua")
+                expanded.add(v[:-3] + "uã")
+            elif v.endswith("uan"):
+                expanded.add(v[:-3] + "oan")
+                expanded.add(v[:-3] + "ua")
+                expanded.add(v[:-3] + "uã")
+            elif v.endswith("ua") or v.endswith("uã"):
+                stem = v[:-2]
+                expanded.add(stem + "oan")
+                expanded.add(stem + "uan")
+                expanded.add(stem + "ua")
+                expanded.add(stem + "uã")
+
+            # 2. Sibilantes e consoantes equivalentes (ç / ss / s / z)
+            if "ç" in v:
+                expanded.add(v.replace("ç", "ss"))
+                expanded.add(v.replace("ç", "s"))
+            if "ss" in v:
+                expanded.add(v.replace("ss", "ç"))
+                expanded.add(v.replace("ss", "s"))
+            if "z" in v:
+                expanded.add(v.replace("z", "s"))
+            if "s" in v:
+                expanded.add(v.replace("s", "z"))
+
+        # Preserva ordem de busca, priorizando a query original
+        result_variants = [cleaned]
+        for v in expanded:
+            if v and v not in result_variants:
+                result_variants.append(v)
+        return result_variants
+
     q_clean = q.strip() if q else ""
     if not q_clean:
         return []
 
-    encoded = urllib.parse.quote(q_clean)
+    queries = _generate_pt_variants(q_clean)
     items = []
+    seen_coords = set()
 
-    # 1. Tenta Photon Geocoder (suporte a fuzzy matching, tolerância a typos e viés geográfico)
-    photon_url = f"https://photon.komoot.io/api/?q={encoded}&lang=pt&limit=15"
-    if lat is not None and lon is not None:
-        photon_url += f"&lat={lat}&lon={lon}"
+    def _add_item(item):
+        try:
+            coord_key = f"{round(float(item['lat']), 4)}_{round(float(item['lon']), 4)}"
+            if coord_key not in seen_coords:
+                seen_coords.add(coord_key)
+                items.append(item)
+        except (ValueError, KeyError, TypeError):
+            items.append(item)
 
-    req_photon = urllib.request.Request(
-        photon_url, 
-        headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
-    )
-
-    try:
-        with urllib.request.urlopen(req_photon, timeout=5) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            if isinstance(data, dict) and "features" in data:
-                for feat in data["features"]:
-                    items.append(_format_photon_feature(feat))
-            elif isinstance(data, list):
-                items.extend(data)
-    except Exception:
-        pass
-
-    # 2. Se Photon não retornar nada, fallback para Nominatim
-    if not items:
+    # 1. Tenta Photon Geocoder com a query original e variantes fonéticas (sem lang=pt pois Photon não suporta)
+    for query_variant in queries[:3]:
+        encoded = urllib.parse.quote(query_variant)
+        photon_url = f"https://photon.komoot.io/api/?q={encoded}&limit=15"
         if lat is not None and lon is not None:
-            delta = 1.5
-            viewbox_str = f"{lon - delta},{lat + delta},{lon + delta},{lat - delta}"
-            nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&viewbox={viewbox_str}&bounded=0&limit=12"
-        else:
-            nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=10"
+            photon_url += f"&lat={lat}&lon={lon}"
 
-        req_nom = urllib.request.Request(
-            nom_url,
+        req_photon = urllib.request.Request(
+            photon_url,
             headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
         )
         try:
-            with urllib.request.urlopen(req_nom, timeout=5) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                if isinstance(data, list):
-                    items.extend(data)
+            with urllib.request.urlopen(req_photon, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if isinstance(data, dict) and "features" in data:
+                    for feat in data["features"]:
+                        _add_item(_format_photon_feature(feat))
+                elif isinstance(data, list):
+                    for d in data:
+                        _add_item(d)
         except Exception:
             pass
+
+        # Se já coletou uma boa quantidade de resultados na área, não precisa sobrecarregar
+        if len(items) >= 15:
+            break
+
+    # 2. Se Photon não retornar nada, fallback para Nominatim com queries prioritárias
+    if not items:
+        for query_variant in queries[:2]:
+            encoded = urllib.parse.quote(query_variant)
+            if lat is not None and lon is not None:
+                delta = 1.5
+                viewbox_str = f"{lon - delta},{lat + delta},{lon + delta},{lat - delta}"
+                nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&viewbox={viewbox_str}&bounded=0&limit=12"
+            else:
+                nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=10"
+
+            req_nom = urllib.request.Request(
+                nom_url,
+                headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
+            )
+            try:
+                with urllib.request.urlopen(req_nom, timeout=5) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    if isinstance(data, list):
+                        for d in data:
+                            _add_item(d)
+            except Exception:
+                pass
+
+            if items:
+                break
 
     # 3. Calcula distâncias e ordena prioritariamente pela proximidade à base
     if lat is not None and lon is not None and items:

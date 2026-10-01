@@ -94,3 +94,36 @@ def test_search_address_fuzzy_typo_tolerance():
         assert "lat" in data[0]
         assert "lon" in data[0]
         assert "address" in data[0]
+
+def test_search_address_phonetic_expansion():
+    # Testa se a busca por "itapuã" busca variantes fonéticas como "itapoan"
+    calls = []
+    def fake_urlopen(req, *args, **kwargs):
+        calls.append(req.full_url)
+        mock_resp = MagicMock()
+        import json
+        payload = {
+            "features": [
+                {
+                    "geometry": {"coordinates": [-38.36, -12.93]},
+                    "properties": {
+                        "name": "Itapoan Praia",
+                        "city": "Salvador",
+                        "state": "Bahia",
+                        "street": "Rua das Dunas"
+                    }
+                }
+            ]
+        }
+        mock_resp.read.return_value = json.dumps(payload).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        response = client.get("/api/v1/routing/search-address?q=itapuã&lat=-12.93&lon=-38.36")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+        assert "Itapoan" in data[0]["name"]
+        # Verifica que url não inclui &lang=pt
+        assert "lang=pt" not in calls[0]
