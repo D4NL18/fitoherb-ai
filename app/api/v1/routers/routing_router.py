@@ -505,8 +505,8 @@ def search_address_proxy(
         except (ValueError, KeyError, TypeError):
             items.append(item)
 
-    # 1. Tenta Photon Geocoder com a query original e variantes fonéticas (sem lang=pt pois Photon não suporta)
-    for query_variant in queries[:3]:
+    # 1. Tenta Photon Geocoder com a query original e todas as variantes fonéticas
+    for query_variant in queries:
         encoded = urllib.parse.quote(query_variant)
         photon_url = f"https://photon.komoot.io/api/?q={encoded}&limit=15"
         if lat is not None and lon is not None:
@@ -528,13 +528,9 @@ def search_address_proxy(
         except Exception:
             pass
 
-        # Se já coletou uma boa quantidade de resultados na área, não precisa sobrecarregar
-        if len(items) >= 15:
-            break
-
-    # 2. Se Photon não retornar nada, fallback para Nominatim com queries prioritárias
+    # 2. Se Photon não retornar nada, fallback para Nominatim com queries variantes
     if not items:
-        for query_variant in queries[:2]:
+        for query_variant in queries[:3]:
             encoded = urllib.parse.quote(query_variant)
             if lat is not None and lon is not None:
                 delta = 1.5
