@@ -377,9 +377,8 @@ def search_address_proxy(
     lon: Optional[float] = None
 ):
     """
-    Proxy de busca de endereços no Nominatim com priorização de proximidade geográfica:
-    Quando lat/lon da base do vendedor são fornecidos, aplica viewbox e ordena os resultados
-    mais próximos da base em primeiro lugar (ex: Feira de Santana, Salvador, etc).
+    Proxy de busca de endereços inteligente com tolerância a erros (fuzzy) e priorização
+    por proximidade geográfica (Photon OSM + Nominatim com fallback).
     """
     import urllib.parse
     import urllib.request
@@ -394,39 +393,100 @@ def search_address_proxy(
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return R * c
 
-    if not q or not q.strip():
+    def _format_photon_feature(feature):
+        props = feature.get("properties", {})
+        coords = feature.get("geometry", {}).get("coordinates", [0, 0])
+        f_lon = float(coords[0])
+        f_lat = float(coords[1])
+        name = props.get("name") or props.get("street") or ""
+        street = props.get("street", "")
+        house_num = props.get("housenumber", "")
+        suburb = props.get("district") or props.get("suburb", "")
+        city = props.get("city", "")
+        state = props.get("state", "")
+        postcode = props.get("postcode", "")
+        country = props.get("country", "Brasil")
+
+        address = {
+            "road": street,
+            "house_number": house_num,
+            "suburb": suburb,
+            "city": city,
+            "state": state,
+            "postcode": postcode,
+            "country": country
+        }
+
+        parts = [p for p in [name, f"{street} {house_num}".strip() if street else "", suburb, city, state, country] if p]
+        display_name = ", ".join(dict.fromkeys(parts))
+
+        return {
+            "lat": str(f_lat),
+            "lon": str(f_lon),
+            "name": name,
+            "display_name": display_name,
+            "address": address
+        }
+
+    q_clean = q.strip() if q else ""
+    if not q_clean:
         return []
 
-    encoded = urllib.parse.quote(q.strip())
-    
-    if lat is not None and lon is not None:
-        delta = 1.5
-        min_lon = lon - delta
-        max_lon = lon + delta
-        min_lat = lat - delta
-        max_lat = lat + delta
-        viewbox_str = f"{min_lon},{max_lat},{max_lon},{min_lat}"
-        url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&viewbox={viewbox_str}&bounded=0&limit=12"
-    else:
-        url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=10"
+    encoded = urllib.parse.quote(q_clean)
+    items = []
 
-    req = urllib.request.Request(
-        url, 
+    # 1. Tenta Photon Geocoder (suporte a fuzzy matching, tolerância a typos e viés geográfico)
+    photon_url = f"https://photon.komoot.io/api/?q={encoded}&lang=pt&limit=15"
+    if lat is not None and lon is not None:
+        photon_url += f"&lat={lat}&lon={lon}"
+
+    req_photon = urllib.request.Request(
+        photon_url, 
         headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
     )
+
     try:
-        with urllib.request.urlopen(req, timeout=5) as response:
-            items = json.loads(response.read().decode('utf-8'))
-            if lat is not None and lon is not None and items:
-                for it in items:
-                    try:
-                        it["_distance_km"] = _haversine(lat, lon, float(it["lat"]), float(it["lon"]))
-                    except (ValueError, KeyError):
-                        it["_distance_km"] = 99999.0
-                items.sort(key=lambda x: x.get("_distance_km", 99999.0))
-            return items
+        with urllib.request.urlopen(req_photon, timeout=5) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            if isinstance(data, dict) and "features" in data:
+                for feat in data["features"]:
+                    items.append(_format_photon_feature(feat))
+            elif isinstance(data, list):
+                items.extend(data)
     except Exception:
-        return []
+        pass
+
+    # 2. Se Photon não retornar nada, fallback para Nominatim
+    if not items:
+        if lat is not None and lon is not None:
+            delta = 1.5
+            viewbox_str = f"{lon - delta},{lat + delta},{lon + delta},{lat - delta}"
+            nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&viewbox={viewbox_str}&bounded=0&limit=12"
+        else:
+            nom_url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&addressdetails=1&countrycodes=br&limit=10"
+
+        req_nom = urllib.request.Request(
+            nom_url,
+            headers={"User-Agent": "FitoherbCommercialRouting/1.0 (contato@fitoherb.com.br)"}
+        )
+        try:
+            with urllib.request.urlopen(req_nom, timeout=5) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                if isinstance(data, list):
+                    items.extend(data)
+        except Exception:
+            pass
+
+    # 3. Calcula distâncias e ordena prioritariamente pela proximidade à base
+    if lat is not None and lon is not None and items:
+        for it in items:
+            try:
+                it["_distance_km"] = _haversine(lat, lon, float(it["lat"]), float(it["lon"]))
+            except (ValueError, KeyError, TypeError):
+                it["_distance_km"] = 99999.0
+        items.sort(key=lambda x: x.get("_distance_km", 99999.0))
+
+    return items
 
 @router.get("/reverse-geocode")
 def reverse_geocode_proxy(lat: float, lon: float):
