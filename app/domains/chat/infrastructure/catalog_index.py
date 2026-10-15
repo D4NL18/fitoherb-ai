@@ -23,17 +23,19 @@ logger = logging.getLogger(__name__)
 def extract_clean_search(query: str) -> str:
     cleaned = query.strip()
     patterns = [
+        r"^(por\s+favor[,]?\s*)",
+        r"^(eu\s+)?(quero|queria|gostaria\s+de)\s+(a\s+lista\s+de\s+|uma\s+lista\s+de\s+|o\s+catalogo\s+de\s+|o\s+catálogo\s+de\s+|ver\s+|saber\s+sobre\s+|conhecer\s+|comprar\s+|achar\s+|encontrar\s+)?(de|da|do)?\s*",
         r"^(quais\s+(as|os|sao|são)?\s*(as|os)?\s*(opcoes|opções)?\s*(de|da|do)?\s*)",
         r"^(tem\s+(algum|alguma|opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*)",
-        r"^(voces|vocês)\s+tem\s+(opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*",
-        r"^(voce|você)\s+tem\s+(opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*",
-        r"^(gostaria\s+de\s+(ver|saber\s+sobre|conhecer)?\s*)",
-        r"^(me\s+(mostre|mostra|diga|fale\s+sobre)\s*)",
-        r"^(mostrar\s+|listar\s+|lista\s+de\s*)",
-        r"^(procuro\s+por\s+|estou\s+procurando\s*(por)?\s*)"
+        r"^(voces|vocês|voce|você)\s+tem\s+(algum|alguma|opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*",
+        r"^(me\s+(mostre|mostra|diga|fale\s+sobre|mande|passa)\s*(a\s+lista\s+de\s+|as\s+opcoes\s+de\s+|as\s+opções\s+de\s*)?)",
+        r"^(mostrar\s+|listar\s+|lista\s+de\s+|catalogo\s+de\s+|catálogo\s+de\s*)",
+        r"^(procuro\s+por\s+|estou\s+procurando\s*(por)?\s*)",
+        r"^(onde\s+(acho|encontro|tem)\s*)"
     ]
     for p in patterns:
         cleaned = re.sub(p, "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(a|o|as|os|de|da|do|dos|das|sobre)\s+", "", cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.rstrip("?!.,; ")
     return cleaned if len(cleaned) >= 2 else query.strip().rstrip("?!.,; ")
 
