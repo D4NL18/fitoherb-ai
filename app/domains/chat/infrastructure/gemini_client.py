@@ -1,18 +1,28 @@
 import os
+import json
 import logging
 from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 # Lista de modelos Flash prioritários por ordem de novidade/estabilidade
 CANDIDATE_FLASH_MODELS = [
-    "gemini-flash-latest",
     "gemini-3.8-flash",
+    "gemini-flash-latest",
     "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash"
 ]
-DEFAULT_FLASH_MODEL = "gemini-flash-latest"
+DEFAULT_FLASH_MODEL = "gemini-3.8-flash"
+
+
+class GeminiChatDecision(BaseModel):
+    reply: str = Field(description="Resposta curta e direta em portugues, maximo 2 a 3 frases, sem travessao no meio das frases e sem palavras dificeis. Trate todas as marcas com igual neutralidade.")
+    should_redirect: bool = Field(description="True se o usuario estiver perguntando ou buscando produtos do catalogo.")
+    catalog_search: str = Field(default="", description="Termo de busca semantico limpo e contextualizado para filtrar o catalogo no backend (ex: whey 100%, creatina, whey 100% morango). Vazio se nao for busca de produtos.")
+    category_slug: Optional[str] = Field(default=None, description="Slug da categoria se identificada.")
+    supplier_slug: Optional[str] = Field(default=None, description="Slug do fornecedor se identificado.")
 
 
 class GeminiClient:
@@ -126,5 +136,74 @@ class GeminiClient:
                 continue
 
         logger.error(f"Todos os modelos Flash falharam. Último erro: {last_error}")
+        raise last_error
+
+    def generate_chat_decision(
+        self,
+        system_instruction: str,
+        user_message: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        max_output_tokens: int = 350
+    ) -> GeminiChatDecision:
+        """
+        Gera uma decisão estruturada com Structured Output (P-309).
+        A própria LLM interpreta a semântica da frase do usuário, decide se deve
+        redirecionar e extrai o termo de busca contextualizado (catalog_search).
+        """
+        if not self._client:
+            raise RuntimeError("Cliente Gemini não inicializado ou sem API key.")
+
+        from google.genai import types
+
+        contents = []
+        if history:
+            for h in history:
+                role = "user" if h.get("role") == "user" else "model"
+                contents.append(
+                    types.Content(
+                        role=role,
+                        parts=[types.Part.from_text(text=h.get("content", ""))]
+                    )
+                )
+
+        contents.append(
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=user_message)]
+            )
+        )
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.1,
+            max_output_tokens=max_output_tokens,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            response_mime_type="application/json",
+            response_schema=GeminiChatDecision
+        )
+
+        models_to_try = [self.model_name] + [m for m in CANDIDATE_FLASH_MODELS if m != self.model_name]
+        last_error = None
+
+        for candidate_model in models_to_try:
+            try:
+                response = self._client.models.generate_content(
+                    model=candidate_model,
+                    contents=contents,
+                    config=config
+                )
+                if candidate_model != self.model_name:
+                    logger.info(f"Migrado dinamicamente para o modelo estável {candidate_model}")
+                    self.model_name = candidate_model
+
+                raw_json = response.text or "{}"
+                data = json.loads(raw_json)
+                return GeminiChatDecision(**data)
+            except Exception as exc:
+                last_error = exc
+                logger.warning(f"Erro ao chamar Google GenAI ({candidate_model}) com Structured Output: {exc}. Tentando próximo modelo...")
+                continue
+
+        logger.error(f"Todos os modelos Flash falharam para Structured Output. Último erro: {last_error}")
         raise last_error
 

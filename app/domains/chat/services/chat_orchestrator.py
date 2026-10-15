@@ -123,11 +123,7 @@ class ChatOrchestrator:
                 meta={"cache": "HIT", "tokens": {"prompt_tokens": 0, "completion_tokens": 0}}
             )
 
-        # 6. Busca no Catálogo Indexado com resolução contextual (P-304, P-305)
-        effective_query = self._resolve_contextual_query(user_text, request.history or [])
-        top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
-
-        # 7. Compactação Automática de Histórico (P-307)
+        # 6. Compactação Automática de Histórico (P-307)
         history_items = request.history or []
         condensed_history: List[Dict[str, str]] = []
         if len(history_items) >= 5:
@@ -136,89 +132,123 @@ class ChatOrchestrator:
         else:
             condensed_history = [{"role": m.role, "content": m.content} for m in history_items]
 
-        # 8. Decisão de Ação (Redirecionamento Automático para /produtos)
-        norm_query_lower = effective_query.lower()
-        product_trigger_keywords = [
-            "whey", "creatina", "albumina", "colageno", "omega", "vitamina",
-            "suplemento", "produto", "cha", "mel", "propolis", "opcoes", "opcao",
-            "morango", "chocolate", "baunilha", "sabor"
-        ]
-        has_product_query = (
-            len(top_products) > 0
-            or len(detected_filters["category"]) > 0
-            or len(detected_filters["supplier"]) > 0
-            or any(kw in norm_query_lower for kw in product_trigger_keywords)
-        )
+        # 7. Interpretação Semântica e Decisão de Roteamento via Gemini Structured Output (P-309)
         action = ChatActionDto(type="NONE", auto_redirect=False)
         products_dto: List[ProductSnippetDto] = []
-
-        if has_product_query:
-            action = ChatActionDto(
-                type="NAVIGATE_CATALOG",
-                auto_redirect=True,
-                filters=CatalogFiltersDto(
-                    category=detected_filters["category"],
-                    supplier=detected_filters["supplier"],
-                    search=detected_filters["search"]
-                )
-            )
-            for p in top_products:
-                products_dto.append(
-                    ProductSnippetDto(
-                        name=p.get("name", ""),
-                        slug=p.get("slug", ""),
-                        image_url=p.get("image_url", ""),
-                        category=p.get("category", ""),
-                        supplier=p.get("supplier", "")
-                    )
-                )
-
-        # 9. Geração de Resposta via Gemini Flash ou Fallback Local
         reply = ""
         prompt_tokens = 0
         completion_tokens = 0
+        intent = "GENERAL_QUERY"
 
         if self.gemini_client.is_ready:
             try:
-                products_context_lines = []
-                for p in top_products:
-                    flv = p.get("flavours", [])
-                    flv_str = f", Sabores: {', '.join(flv)}" if flv else ""
-                    products_context_lines.append(
-                        f"- {p.get('name')} (Categoria: {p.get('category')}, Fornecedor: {p.get('supplier')}{flv_str})"
-                    )
-                products_context = "\n".join(products_context_lines)
-
                 system_instruction = (
-                    "You are the virtual assistant of Fitoherb, a health and supplement distributor in Northeast Brazil.\n"
-                    "CRITICAL INSTRUCTIONS:\n"
-                    "1. Respond directly and objectively in Portuguese (Brazil). Max 2 to 3 concise sentences.\n"
-                    "2. Do NOT use complicated words or hyphens in the middle of sentences.\n"
-                    "3. Treat all suppliers and brands with equal neutrality. Never endorse or recommend one over another.\n"
-                    "4. If the user asks about a specific flavour or attribute and it is present in Sabores or the product name, confirm availability and mention the brands that offer it.\n"
-                    "5. If products were found in Catalog Context, briefly mention the options/brands found and confirm you are redirecting them to the catalog.\n"
-                    "6. If no products or information are available, say you cannot answer and invite them to contact sales.\n"
-                    f"Catalog Context:\n{products_context}"
+                    "Você é o assistente virtual oficial da Fitoherb, distribuidora de suplementos e produtos naturais no Nordeste.\n"
+                    "Seu objetivo é orientar clientes e ajudá-los a encontrar produtos no catálogo com máxima naturalidade.\n\n"
+                    "DIRETRIZES OBRIGATÓRIAS:\n"
+                    "1. Responda em português (Brasil) em no máximo 2 a 3 frases curtas e diretas.\n"
+                    "2. NUNCA use palavras difíceis e NUNCA use travessões (-) ou meias-riscas (—) no meio das frases.\n"
+                    "3. Trate todas as marcas parceiras com absoluta neutralidade e igualdade.\n"
+                    "   Marcas parceiras oficiais: Integralmedica, Black Skull, Max Titanium, Probiotica, FTW, Flora Nativa, Mandiervas, Katigua, Apisnutri, Chamel, Vital Atman, Unilife.\n"
+                    "4. INTERPRETAÇÃO DO FILTRO (catalog_search):\n"
+                    "   - O que o usuário digita é livre e não é fixo. Interprete o que ele realmente quer buscar.\n"
+                    "   - Se a intenção for buscar produtos, defina 'should_redirect': true e preencha 'catalog_search' com o termo limpo e semântico para filtrar o catálogo (ex: 'whey 100%', 'creatina', 'colageno', 'mel propolis').\n"
+                    "   - Se for uma pergunta de acompanhamento ou continuidade (ex: usuário estava falando de whey 100% e agora pergunta 'tem de morango?' ou 'e de chocolate?'), junte o contexto anterior em 'catalog_search' (ex: 'whey 100% morango').\n"
+                    "   - Se NÃO for sobre produtos (ex: localização, contato, institucional), defina 'should_redirect': false e 'catalog_search': ''.\n"
+                    "5. Se perguntarem algo fora do escopo (preço, tabela nutricional completa), informe que não possui essa informação e convide a contatar a equipe comercial."
                 )
 
-
-                reply = self.gemini_client.generate_chat_response(
+                decision = self.gemini_client.generate_chat_decision(
                     system_instruction=system_instruction,
                     user_message=user_text,
                     history=condensed_history,
-                    max_output_tokens=250
+                    max_output_tokens=350
                 )
+                reply = decision.reply
                 prompt_tokens = 250
                 completion_tokens = len(reply.split())
+
+                if decision.should_redirect and decision.catalog_search:
+                    search_query = decision.catalog_search.strip()
+                    intent = "PRODUCT_SEARCH"
+                    top_products, _ = self.catalog_index.search(search_query, limit=5)
+                    for p in top_products:
+                        products_dto.append(
+                            ProductSnippetDto(
+                                name=p.get("name", ""),
+                                slug=p.get("slug", ""),
+                                image_url=p.get("image_url", ""),
+                                category=p.get("category", ""),
+                                supplier=p.get("supplier", "")
+                            )
+                        )
+
+                    action = ChatActionDto(
+                        type="NAVIGATE_CATALOG",
+                        auto_redirect=True,
+                        filters=CatalogFiltersDto(
+                            category=[decision.category_slug] if decision.category_slug else [],
+                            supplier=[decision.supplier_slug] if decision.supplier_slug else [],
+                            search=search_query
+                        )
+                    )
             except Exception as e:
-                logger.error(f"Fallback acionado devido a erro no Gemini: {e}")
+                logger.error(f"Erro ao processar Structured Output no Gemini: {e}. Acionando fallback...")
+                effective_query = self._resolve_contextual_query(user_text, request.history or [])
+                top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
+                search_query = detected_filters["search"] or effective_query
+                has_product_query = len(top_products) > 0 or any(kw in user_text.lower() for kw in ["whey", "creatina", "produto", "opcoes"])
                 if has_product_query:
-                    reply = "Encontrei opções no catálogo da Fitoherb e estou direcionando você para conferir todos os detalhes."
+                    intent = "PRODUCT_SEARCH"
+                    reply = "Temos opções disponíveis em nosso catálogo e estou direcionando você para conferir todos os detalhes."
+                    action = ChatActionDto(
+                        type="NAVIGATE_CATALOG",
+                        auto_redirect=True,
+                        filters=CatalogFiltersDto(
+                            category=detected_filters["category"],
+                            supplier=detected_filters["supplier"],
+                            search=search_query
+                        )
+                    )
+                    for p in top_products:
+                        products_dto.append(
+                            ProductSnippetDto(
+                                name=p.get("name", ""),
+                                slug=p.get("slug", ""),
+                                image_url=p.get("image_url", ""),
+                                category=p.get("category", ""),
+                                supplier=p.get("supplier", "")
+                            )
+                        )
                 else:
                     reply = "Não tenho essa informação no momento. Por favor, entre em contato com nossa equipe comercial."
         else:
+            effective_query = self._resolve_contextual_query(user_text, request.history or [])
+            top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
+            search_query = detected_filters["search"] or effective_query
+            has_product_query = len(top_products) > 0 or any(kw in user_text.lower() for kw in ["whey", "creatina", "produto", "opcoes"])
             if has_product_query:
+                intent = "PRODUCT_SEARCH"
                 reply = "Encontrei opções no catálogo da Fitoherb e estou direcionando você para conferir os detalhes."
+                action = ChatActionDto(
+                    type="NAVIGATE_CATALOG",
+                    auto_redirect=True,
+                    filters=CatalogFiltersDto(
+                        category=detected_filters["category"],
+                        supplier=detected_filters["supplier"],
+                        search=search_query
+                    )
+                )
+                for p in top_products:
+                    products_dto.append(
+                        ProductSnippetDto(
+                            name=p.get("name", ""),
+                            slug=p.get("slug", ""),
+                            image_url=p.get("image_url", ""),
+                            category=p.get("category", ""),
+                            supplier=p.get("supplier", "")
+                        )
+                    )
             else:
                 reply = "Não possuo essa informação. Para mais detalhes, fale com nosso setor comercial pelo telefone (71) 3379-7717."
 
@@ -227,7 +257,7 @@ class ChatOrchestrator:
 
         response_data = ChatResponseData(
             reply=clean_reply.strip(),
-            intent="PRODUCT_SEARCH" if has_product_query else "GENERAL_QUERY",
+            intent=intent,
             action=action,
             products=products_dto,
             suggestions=["O que é a Fitoherb?", "Onde fica a distribuidora?", "Falar com o comercial"]
