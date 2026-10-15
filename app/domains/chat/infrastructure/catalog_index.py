@@ -203,21 +203,26 @@ class CatalogIndex:
 
             score = 0
 
-            # Verifica correspondência de todos os tokens principais no nome (independente da ordem)
+            # 1. Prioridade máxima: correspondência contígua exata do termo buscado no nome (ex: 'whey 100%')
+            if norm_clean and norm_clean in p_name:
+                score += 100
+            elif norm_clean and norm_clean in haystack:
+                score += 40
+
+            # 2. Correspondência de todos os tokens principais no nome (independente da ordem, ex: '100% whey')
             if core_tokens:
                 name_token_matches = sum(1 for t in core_tokens if t in p_name)
                 haystack_token_matches = sum(1 for t in core_tokens if t in haystack)
 
                 if name_token_matches == len(core_tokens):
-                    # Todos os termos buscados estão no nome do produto (ex: '100% whey' ou 'whey 100%')
-                    score += 60
+                    score += 50
                 elif name_token_matches > 0:
-                    score += name_token_matches * 15
+                    score += name_token_matches * 10
 
-                if haystack_token_matches == len(core_tokens) and score < 60:
-                    score += 30
+                if haystack_token_matches == len(core_tokens) and score < 50:
+                    score += 25
 
-            # Bônus para expansão de sinônimos
+            # 3. Bônus para expansão de sinônimos
             for t in expanded_tokens:
                 if t in p_name:
                     score += 5
@@ -226,6 +231,7 @@ class CatalogIndex:
 
             if score > 0:
                 scored_products.append((score, p))
+
 
         # Ordena decrescente por relevância
         scored_products.sort(key=lambda x: x[0], reverse=True)
