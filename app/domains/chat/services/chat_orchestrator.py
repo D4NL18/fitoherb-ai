@@ -37,6 +37,35 @@ class ChatOrchestrator:
         self.catalog_index = CatalogIndex()
         self.gemini_client = gemini_client or GeminiClient()
 
+    def _resolve_contextual_query(self, user_text: str, history: List[ChatMessageItem]) -> str:
+        norm_msg = user_text.lower().strip()
+        product_topics = ["whey 100%", "whey", "creatina", "colageno", "colágeno", "albumina", "omega 3", "ômega 3", "omega", "vitamina", "mel", "propolis", "cha"]
+
+        # Se a mensagem atual já possui um tópico de produto explícito, mantém
+        if any(pt in norm_msg for pt in ["whey", "creatina", "colageno", "colágeno", "albumina", "omega", "ômega", "vitamina", "mel", "propolis", "cha"]):
+            return user_text
+
+        # Palavras indicativas de sabor, apresentação ou acompanhamento
+        attribute_keywords = [
+            "morango", "chocolate", "baunilha", "cookies", "limao", "limão",
+            "maracuja", "maracujá", "banana", "coco", "doce de leite", "neutro",
+            "sem sabor", "refil", "pote", "saco", "isolado", "concentrado", "hidrolisado",
+            "tem de", "tem sabor", "qual o sabor", "quais os sabores", "sabor", "sabores"
+        ]
+        is_contextual = any(ak in norm_msg for ak in attribute_keywords) or len(norm_msg.split()) <= 4
+
+        if is_contextual and history:
+            for item in reversed(history):
+                if item.role == "user":
+                    prev_text = item.content.lower()
+                    for pt in product_topics:
+                        if pt in prev_text:
+                            from app.domains.chat.infrastructure.catalog_index import extract_clean_search
+                            clean_curr = extract_clean_search(user_text)
+                            return f"{pt} {clean_curr}".strip()
+
+        return user_text
+
     def process_message(self, request: ChatRequest) -> ChatResponse:
         user_text = request.message.strip()
 
@@ -94,8 +123,9 @@ class ChatOrchestrator:
                 meta={"cache": "HIT", "tokens": {"prompt_tokens": 0, "completion_tokens": 0}}
             )
 
-        # 6. Busca no Catálogo Indexado (P-304, P-305)
-        top_products, detected_filters = self.catalog_index.search(user_text, limit=5)
+        # 6. Busca no Catálogo Indexado com resolução contextual (P-304, P-305)
+        effective_query = self._resolve_contextual_query(user_text, request.history or [])
+        top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
 
         # 7. Compactação Automática de Histórico (P-307)
         history_items = request.history or []
@@ -107,10 +137,11 @@ class ChatOrchestrator:
             condensed_history = [{"role": m.role, "content": m.content} for m in history_items]
 
         # 8. Decisão de Ação (Redirecionamento Automático para /produtos)
-        norm_query_lower = user_text.lower()
+        norm_query_lower = effective_query.lower()
         product_trigger_keywords = [
             "whey", "creatina", "albumina", "colageno", "omega", "vitamina",
-            "suplemento", "produto", "cha", "mel", "propolis", "opcoes", "opcao"
+            "suplemento", "produto", "cha", "mel", "propolis", "opcoes", "opcao",
+            "morango", "chocolate", "baunilha", "sabor"
         ]
         has_product_query = (
             len(top_products) > 0
@@ -149,20 +180,27 @@ class ChatOrchestrator:
 
         if self.gemini_client.is_ready:
             try:
-                products_context = "\n".join([
-                    f"- {p.get('name')} (Categoria: {p.get('category')}, Fornecedor: {p.get('supplier')})"
-                    for p in top_products
-                ])
+                products_context_lines = []
+                for p in top_products:
+                    flv = p.get("flavours", [])
+                    flv_str = f", Sabores: {', '.join(flv)}" if flv else ""
+                    products_context_lines.append(
+                        f"- {p.get('name')} (Categoria: {p.get('category')}, Fornecedor: {p.get('supplier')}{flv_str})"
+                    )
+                products_context = "\n".join(products_context_lines)
+
                 system_instruction = (
                     "You are the virtual assistant of Fitoherb, a health and supplement distributor in Northeast Brazil.\n"
                     "CRITICAL INSTRUCTIONS:\n"
                     "1. Respond directly and objectively in Portuguese (Brazil). Max 2 to 3 concise sentences.\n"
                     "2. Do NOT use complicated words or hyphens in the middle of sentences.\n"
                     "3. Treat all suppliers and brands with equal neutrality. Never endorse or recommend one over another.\n"
-                    "4. If products were found in Catalog Context, briefly mention the options/brands found and confirm you are redirecting them to the catalog.\n"
-                    "5. If no products or information are available, say you cannot answer and invite them to contact sales.\n"
+                    "4. If the user asks about a specific flavour or attribute and it is present in Sabores or the product name, confirm availability and mention the brands that offer it.\n"
+                    "5. If products were found in Catalog Context, briefly mention the options/brands found and confirm you are redirecting them to the catalog.\n"
+                    "6. If no products or information are available, say you cannot answer and invite them to contact sales.\n"
                     f"Catalog Context:\n{products_context}"
                 )
+
 
                 reply = self.gemini_client.generate_chat_response(
                     system_instruction=system_instruction,

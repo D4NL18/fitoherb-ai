@@ -209,15 +209,21 @@ class CatalogIndex:
             elif norm_clean and norm_clean in haystack:
                 score += 40
 
-            # 2. Correspondência de todos os tokens principais no nome (independente da ordem, ex: '100% whey')
+            # 2. Correspondência de todos os tokens principais (nome e/ou sabores, ex: 'whey' no nome e 'morango' nos sabores)
             if core_tokens:
-                name_token_matches = sum(1 for t in core_tokens if t in p_name)
+                name_matches = sum(1 for t in core_tokens if t in p_name)
+                name_or_flavour_matches = sum(1 for t in core_tokens if (t in p_name or t in flavours))
                 haystack_token_matches = sum(1 for t in core_tokens if t in haystack)
 
-                if name_token_matches == len(core_tokens):
-                    score += 50
-                elif name_token_matches > 0:
-                    score += name_token_matches * 10
+                if name_matches == len(core_tokens):
+                    score += 60
+                elif name_or_flavour_matches == len(core_tokens):
+                    score += 55
+                    # Bônus quando combina produto no nome e sabor nos flavours (ex: whey + morango)
+                    if any(t in p_name for t in core_tokens) and any(t in flavours for t in core_tokens):
+                        score += 30
+                elif name_or_flavour_matches > 0:
+                    score += name_or_flavour_matches * 10
 
                 if haystack_token_matches == len(core_tokens) and score < 50:
                     score += 25
@@ -231,6 +237,7 @@ class CatalogIndex:
 
             if score > 0:
                 scored_products.append((score, p))
+
 
 
         # Ordena decrescente por relevância
