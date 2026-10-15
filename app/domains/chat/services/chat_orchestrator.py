@@ -107,7 +107,17 @@ class ChatOrchestrator:
             condensed_history = [{"role": m.role, "content": m.content} for m in history_items]
 
         # 8. Decisão de Ação (Redirecionamento Automático para /produtos)
-        has_product_query = len(top_products) > 0 or len(detected_filters["category"]) > 0 or len(detected_filters["supplier"]) > 0
+        norm_query_lower = user_text.lower()
+        product_trigger_keywords = [
+            "whey", "creatina", "albumina", "colageno", "omega", "vitamina",
+            "suplemento", "produto", "cha", "mel", "propolis", "opcoes", "opcao"
+        ]
+        has_product_query = (
+            len(top_products) > 0
+            or len(detected_filters["category"]) > 0
+            or len(detected_filters["supplier"]) > 0
+            or any(kw in norm_query_lower for kw in product_trigger_keywords)
+        )
         action = ChatActionDto(type="NONE", auto_redirect=False)
         products_dto: List[ProductSnippetDto] = []
 
@@ -149,8 +159,8 @@ class ChatOrchestrator:
                     "1. Respond directly and objectively in Portuguese (Brazil). Max 2 to 3 concise sentences.\n"
                     "2. Do NOT use complicated words or hyphens in the middle of sentences.\n"
                     "3. Treat all suppliers and brands with equal neutrality. Never endorse or recommend one over another.\n"
-                    "4. If products were found, inform the user that you are redirecting them to the catalog.\n"
-                    "5. If no information is available, say you cannot answer and invite them to contact sales.\n"
+                    "4. If products were found in Catalog Context, briefly mention the options/brands found and confirm you are redirecting them to the catalog.\n"
+                    "5. If no products or information are available, say you cannot answer and invite them to contact sales.\n"
                     f"Catalog Context:\n{products_context}"
                 )
 
@@ -158,14 +168,14 @@ class ChatOrchestrator:
                     system_instruction=system_instruction,
                     user_message=user_text,
                     history=condensed_history,
-                    max_output_tokens=150
+                    max_output_tokens=250
                 )
                 prompt_tokens = 250
                 completion_tokens = len(reply.split())
             except Exception as e:
                 logger.error(f"Fallback acionado devido a erro no Gemini: {e}")
                 if has_product_query:
-                    reply = "Encontrei opções correspondentes no catálogo e estou direcionando você para a página de produtos."
+                    reply = "Encontrei opções no catálogo da Fitoherb e estou direcionando você para conferir todos os detalhes."
                 else:
                     reply = "Não tenho essa informação no momento. Por favor, entre em contato com nossa equipe comercial."
         else:
@@ -175,7 +185,7 @@ class ChatOrchestrator:
                 reply = "Não possuo essa informação. Para mais detalhes, fale com nosso setor comercial pelo telefone (71) 3379-7717."
 
         # Remove eventuais travessões do meio das frases para respeitar a diretriz de estilo
-        clean_reply = reply.replace(" - ", ", ")
+        clean_reply = reply.replace(" — ", ", ").replace(" - ", ", ").replace(" – ", ", ")
 
         response_data = ChatResponseData(
             reply=clean_reply.strip(),

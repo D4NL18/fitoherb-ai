@@ -14,13 +14,38 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", cleaned).strip()
 
 
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+
+def extract_clean_search(query: str) -> str:
+    cleaned = query.strip()
+    patterns = [
+        r"^(quais\s+(as|os|sao|são)?\s*(as|os)?\s*(opcoes|opções)?\s*(de|da|do)?\s*)",
+        r"^(tem\s+(algum|alguma|opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*)",
+        r"^(voces|vocês)\s+tem\s+(opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*",
+        r"^(voce|você)\s+tem\s+(opcao|opção|opcoes|opções)?\s*(de|da|do)?\s*",
+        r"^(gostaria\s+de\s+(ver|saber\s+sobre|conhecer)?\s*)",
+        r"^(me\s+(mostre|mostra|diga|fale\s+sobre)\s*)",
+        r"^(mostrar\s+|listar\s+|lista\s+de\s*)",
+        r"^(procuro\s+por\s+|estou\s+procurando\s*(por)?\s*)"
+    ]
+    for p in patterns:
+        cleaned = re.sub(p, "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.rstrip("?!.,; ")
+    return cleaned if len(cleaned) >= 2 else query.strip().rstrip("?!.,; ")
+
+
 class CatalogIndex:
     """
     Índice em memória para busca rápida no catálogo (P-304, P-305).
     Indexa nome, slug, categoria, fornecedor, sabores, apresentação e descrição.
+    Carrega automaticamente os produtos do banco de dados PostgreSQL.
     """
 
-    def __init__(self):
+    def __init__(self, auto_load_db: bool = True):
         self.products: List[Dict[str, Any]] = []
         self.categories: List[Dict[str, str]] = []
         self.suppliers: List[Dict[str, str]] = []
@@ -33,6 +58,79 @@ class CatalogIndex:
             "cha": ["cha", "infusao", "ervas"],
             "vitamina": ["vitamina", "multivitaminico", "complexo b", "vitamina c"],
         }
+        if auto_load_db:
+            self.load_from_db()
+
+    def load_from_db(
+        self,
+        dbname: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None
+    ) -> bool:
+        """
+        Carrega todos os produtos, categorias e fornecedores diretamente do PostgreSQL.
+        """
+        try:
+            import psycopg2
+            db_name = dbname or os.getenv("POSTGRES_DB") or "fitoherb-v2"
+            db_user = user or os.getenv("PostgresUsername") or os.getenv("POSTGRES_USER") or "postgres"
+            db_pass = password or os.getenv("PostgresPassword") or os.getenv("POSTGRES_PASSWORD") or "Dm120394"
+            db_host = host or os.getenv("POSTGRES_HOST") or "localhost"
+            db_port = port or int(os.getenv("POSTGRES_PORT", "5432"))
+
+            conn = psycopg2.connect(
+                dbname=db_name,
+                user=db_user,
+                password=db_pass,
+                host=db_host,
+                port=db_port,
+                connect_timeout=3
+            )
+            conn.set_client_encoding("UTF8")
+            cur = conn.cursor()
+
+            # Categorias
+            cur.execute("SELECT id, name, slug FROM product_categories;")
+            categories = [{"id": str(r[0]), "name": r[1], "slug": r[2]} for r in cur.fetchall()]
+
+            # Fornecedores
+            cur.execute("SELECT id, name, slug FROM suppliers;")
+            suppliers = [{"id": str(r[0]), "name": r[1], "slug": r[2]} for r in cur.fetchall()]
+
+            # Produtos
+            cur.execute("""
+                SELECT p.id, p.name, p.slug, p.image_path, p.description, p.flavours, p.presentation,
+                       c.name as category_name, c.slug as category_slug,
+                       s.name as supplier_name, s.slug as supplier_slug
+                FROM products p
+                LEFT JOIN product_categories c ON p.category_id = c.id
+                LEFT JOIN suppliers s ON p.supplier_id = s.id;
+            """)
+            products = []
+            for r in cur.fetchall():
+                products.append({
+                    "id": str(r[0]),
+                    "name": r[1] or "",
+                    "slug": r[2] or "",
+                    "image_url": f"/uploads/products/{r[3]}" if r[3] else None,
+                    "description": r[4] or "",
+                    "flavours": r[5] or [],
+                    "presentation": r[6] or [],
+                    "category": r[7] or "",
+                    "category_slug": r[8] or "",
+                    "supplier": r[9] or "",
+                    "supplier_slug": r[10] or ""
+                })
+
+            conn.close()
+            self.set_catalog(products=products, categories=categories, suppliers=suppliers)
+            logger.info(f"CatalogIndex populado com sucesso: {len(products)} produtos, {len(categories)} categorias, {len(suppliers)} fornecedores.")
+            return True
+        except Exception as exc:
+            logger.warning(f"Não foi possível carregar catálogo diretamente do PostgreSQL: {exc}")
+            return False
 
     def set_catalog(
         self,
@@ -50,10 +148,11 @@ class CatalogIndex:
         Retorna (lista_produtos, filtros_detectados).
         """
         norm_query = normalize_text(query)
+        clean_search_text = extract_clean_search(query)
         detected_filters: Dict[str, Any] = {
             "category": [],
             "supplier": [],
-            "search": query.strip()
+            "search": clean_search_text
         }
 
         # 1. Checa correspondência com fornecedores e categorias conhecidas

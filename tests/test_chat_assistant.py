@@ -84,5 +84,5 @@ def test_orchestrator_product_query_auto_redirect():
 
     assert res.data.action.type == "NAVIGATE_CATALOG"
     assert res.data.action.auto_redirect is True
-    assert res.data.action.filters.search == "quais as opções de whey 100%?"
+    assert "whey 100%" in res.data.action.filters.search.lower()
     assert len(res.data.products) >= 1
