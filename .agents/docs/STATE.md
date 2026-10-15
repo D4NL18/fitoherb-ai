@@ -1,13 +1,13 @@
 # Status Atual do Desenvolvimento (Context Window)
 
-Este documento é mantido exclusivamente pelo **Orquestrador**. Ele serve como uma memória persistente do estado exato onde a conversa e a funcionalidade se encontram, prevenindo que as diretrizes se percam em contextos (prompts) longos.
+Este documento é mantido exclusivamente pelo **Orquestrador**. Ele serve como uma memória persistente do estado exato onde a conversa e a funcionalidade se encontram, prevenindo que as diretrizes se percam em contextos longos.
 
 ## Tarefa Atual em Foco
-- **Feature/Entidade:** Roteirização Comercial Inteligente (Algoritmo Genético de Vendedor Único com Trava de Ordem)
-- **Branch Atual:** `feature/commercial-routing-ai`
-- **Etapa Atual do Fluxo:** Concluída com Sucesso (Todos os 12 passos da esteira executados e validados)
-- **Última Ação Realizada:** Testes ponta-a-ponta ao vivo dos 3 serviços em execução simultânea (FastAPI 8000, Spring Boot 8080, Angular 4200), validação de regras P-100 a P-105 e geração de relatório de walkthrough.
-- **Próximo Passo Imediato:** Entrega ao usuário e monitoramento.
+- **Feature/Entidade:** Assistente Virtual Inteligente Fitoherb (Chat Gemini Flutuante com Redirecionamento e Tokenomics)
+- **Branch Atual:** `feat/chatbot-gemini-assistant`
+- **Etapa Atual do Fluxo:** Passo 12 concluído (Release via Pull Request e Verificação Final)
+- **Última Ação Realizada:** Conclusão da esteira de 12 passos, validação de testes (29/29 AI e build prod Angular 100% verde), pushes realizados nas branches de feature e links de PR gerados para `develop`.
+- **Próximo Passo Imediato:** Revisão humana e merge dos Pull Requests em `develop`.
 
 ## Progresso do Workflow (Checklist da Pipeline de 12 Passos)
 - [x] 1. Quebra de Escopo no Backlog (Product Owner)
@@ -22,3 +22,4 @@ Este documento é mantido exclusivamente pelo **Orquestrador**. Ele serve como u
 - [x] 10. Validação de Testes QA e Loop de Auto-Healer (Tester)
 - [x] 11. Auditoria de Cibersegurança e Red Teaming (SecOps)
 - [x] 12. Validação de CI/CD, FinOps e Abertura do Pull Request (DevOps)
+
