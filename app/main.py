@@ -21,10 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.v1.routers.chat_router import router as chat_router
+
 # Registro de Rotas da API v1
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(health_router) # /health na raiz para probes do Cloud Run
 app.include_router(routing_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
 
 @app.get("/", tags=["Root"])
 def root():
