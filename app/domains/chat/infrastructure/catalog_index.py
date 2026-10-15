@@ -170,16 +170,26 @@ class CatalogIndex:
                 if sup_slug not in detected_filters["supplier"]:
                     detected_filters["supplier"].append(sup_slug)
 
-        # 2. Expansão simples de sinônimos na query
-        query_tokens = norm_query.split()
-        expanded_tokens = set(query_tokens)
-        for token in query_tokens:
+        # 2. Expansão simples de sinônimos na query e extração de tokens principais
+        norm_clean = normalize_text(clean_search_text)
+        stopwords = {
+            "quais", "as", "os", "sao", "são", "opcoes", "opções", "opcao", "opção",
+            "de", "da", "do", "das", "dos", "para", "com", "em", "um", "uma", "tem",
+            "voces", "vocês", "voce", "você", "sobre", "ver", "gostaria"
+        }
+        raw_tokens = norm_clean.split() if norm_clean else norm_query.split()
+        core_tokens = [t for t in raw_tokens if t not in stopwords and len(t) >= 2]
+        if not core_tokens:
+            core_tokens = [t for t in norm_query.split() if len(t) >= 2]
+
+        expanded_tokens = set(core_tokens)
+        for token in core_tokens:
             for canon, syn_list in self._synonyms.items():
-                if token in syn_list:
+                if token in syn_list or token == canon:
                     expanded_tokens.add(canon)
                     expanded_tokens.update(syn_list)
 
-        # 3. Score e ranqueamento
+        # 3. Score e ranqueamento invariante à ordem das palavras (ex: 'whey 100%' == '100% whey')
         scored_products = []
         for p in self.products:
             p_name = normalize_text(p.get("name", ""))
@@ -192,25 +202,53 @@ class CatalogIndex:
             haystack = f"{p_name} {p_cat} {p_sup} {p_desc} {flavours} {presentation}"
 
             score = 0
-            # Exata na query
-            if norm_query and norm_query in p_name:
-                score += 10
-            elif norm_query and norm_query in haystack:
-                score += 5
 
-            # Token matches
+            # Verifica correspondência de todos os tokens principais no nome (independente da ordem)
+            if core_tokens:
+                name_token_matches = sum(1 for t in core_tokens if t in p_name)
+                haystack_token_matches = sum(1 for t in core_tokens if t in haystack)
+
+                if name_token_matches == len(core_tokens):
+                    # Todos os termos buscados estão no nome do produto (ex: '100% whey' ou 'whey 100%')
+                    score += 60
+                elif name_token_matches > 0:
+                    score += name_token_matches * 15
+
+                if haystack_token_matches == len(core_tokens) and score < 60:
+                    score += 30
+
+            # Bônus para expansão de sinônimos
             for t in expanded_tokens:
-                if len(t) < 3:
-                    continue
                 if t in p_name:
-                    score += 3
+                    score += 5
                 elif t in haystack:
-                    score += 1
+                    score += 2
 
             if score > 0:
                 scored_products.append((score, p))
 
+        # Ordena decrescente por relevância
         scored_products.sort(key=lambda x: x[0], reverse=True)
-        top_products = [item[1] for item in scored_products[:limit]]
+
+        # 4. Diversificação de marcas/fornecedores entre os melhores resultados (P-305 Neutralidade)
+        top_products: List[Dict[str, Any]] = []
+        seen_suppliers = set()
+
+        for s, p in scored_products:
+            sup_name = p.get("supplier", "")
+            if sup_name and sup_name not in seen_suppliers:
+                top_products.append(p)
+                seen_suppliers.add(sup_name)
+            if len(top_products) >= limit:
+                break
+
+        # Se ainda houver vagas para atingir o limite, preenche com os restantes de maior score
+        if len(top_products) < limit:
+            for s, p in scored_products:
+                if p not in top_products:
+                    top_products.append(p)
+                if len(top_products) >= limit:
+                    break
 
         return top_products, detected_filters
+

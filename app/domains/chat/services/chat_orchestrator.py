@@ -95,7 +95,7 @@ class ChatOrchestrator:
             )
 
         # 6. Busca no Catálogo Indexado (P-304, P-305)
-        top_products, detected_filters = self.catalog_index.search(user_text, limit=3)
+        top_products, detected_filters = self.catalog_index.search(user_text, limit=5)
 
         # 7. Compactação Automática de Histórico (P-307)
         history_items = request.history or []
