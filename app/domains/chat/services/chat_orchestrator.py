@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from app.domains.chat.schemas.chat_dto import (
     ChatRequest,
@@ -65,6 +65,48 @@ class ChatOrchestrator:
                             return f"{pt} {clean_curr}".strip()
 
         return user_text
+
+    def _execute_catalog_fallback(
+        self,
+        user_text: str,
+        history: List[ChatMessageItem]
+    ) -> Tuple[str, ChatActionDto, List[ProductSnippetDto], str]:
+        effective_query = self._resolve_contextual_query(user_text, history)
+        top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
+        search_query = detected_filters["search"] or effective_query
+        has_product_query = len(top_products) > 0 or any(
+            kw in user_text.lower() for kw in ["whey", "creatina", "produto", "opcoes"]
+        )
+
+        products_dto: List[ProductSnippetDto] = []
+        if has_product_query:
+            intent = "PRODUCT_SEARCH"
+            reply = "Temos opções disponíveis em nosso catálogo e estou direcionando você para conferir todos os detalhes."
+            action = ChatActionDto(
+                type="NAVIGATE_CATALOG",
+                auto_redirect=True,
+                filters=CatalogFiltersDto(
+                    category=detected_filters["category"],
+                    supplier=detected_filters["supplier"],
+                    search=search_query
+                )
+            )
+            for p in top_products:
+                products_dto.append(
+                    ProductSnippetDto(
+                        name=p.get("name", ""),
+                        slug=p.get("slug", ""),
+                        image_url=p.get("image_url", ""),
+                        category=p.get("category", ""),
+                        supplier=p.get("supplier", "")
+                    )
+                )
+        else:
+            intent = "GENERAL_QUERY"
+            reply = "Não tenho essa informação no momento. Por favor, entre em contato com nossa equipe comercial pelo telefone (71) 3379-7717."
+            action = ChatActionDto(type="NONE", auto_redirect=False)
+
+        return reply, action, products_dto, intent
 
     def process_message(self, request: ChatRequest) -> ChatResponse:
         user_text = request.message.strip()
@@ -194,63 +236,9 @@ class ChatOrchestrator:
                     )
             except Exception as e:
                 logger.error(f"Erro ao processar Structured Output no Gemini: {e}. Acionando fallback...")
-                effective_query = self._resolve_contextual_query(user_text, request.history or [])
-                top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
-                search_query = detected_filters["search"] or effective_query
-                has_product_query = len(top_products) > 0 or any(kw in user_text.lower() for kw in ["whey", "creatina", "produto", "opcoes"])
-                if has_product_query:
-                    intent = "PRODUCT_SEARCH"
-                    reply = "Temos opções disponíveis em nosso catálogo e estou direcionando você para conferir todos os detalhes."
-                    action = ChatActionDto(
-                        type="NAVIGATE_CATALOG",
-                        auto_redirect=True,
-                        filters=CatalogFiltersDto(
-                            category=detected_filters["category"],
-                            supplier=detected_filters["supplier"],
-                            search=search_query
-                        )
-                    )
-                    for p in top_products:
-                        products_dto.append(
-                            ProductSnippetDto(
-                                name=p.get("name", ""),
-                                slug=p.get("slug", ""),
-                                image_url=p.get("image_url", ""),
-                                category=p.get("category", ""),
-                                supplier=p.get("supplier", "")
-                            )
-                        )
-                else:
-                    reply = "Não tenho essa informação no momento. Por favor, entre em contato com nossa equipe comercial."
+                reply, action, products_dto, intent = self._execute_catalog_fallback(user_text, request.history or [])
         else:
-            effective_query = self._resolve_contextual_query(user_text, request.history or [])
-            top_products, detected_filters = self.catalog_index.search(effective_query, limit=5)
-            search_query = detected_filters["search"] or effective_query
-            has_product_query = len(top_products) > 0 or any(kw in user_text.lower() for kw in ["whey", "creatina", "produto", "opcoes"])
-            if has_product_query:
-                intent = "PRODUCT_SEARCH"
-                reply = "Encontrei opções no catálogo da Fitoherb e estou direcionando você para conferir os detalhes."
-                action = ChatActionDto(
-                    type="NAVIGATE_CATALOG",
-                    auto_redirect=True,
-                    filters=CatalogFiltersDto(
-                        category=detected_filters["category"],
-                        supplier=detected_filters["supplier"],
-                        search=search_query
-                    )
-                )
-                for p in top_products:
-                    products_dto.append(
-                        ProductSnippetDto(
-                            name=p.get("name", ""),
-                            slug=p.get("slug", ""),
-                            image_url=p.get("image_url", ""),
-                            category=p.get("category", ""),
-                            supplier=p.get("supplier", "")
-                        )
-                    )
-            else:
-                reply = "Não possuo essa informação. Para mais detalhes, fale com nosso setor comercial pelo telefone (71) 3379-7717."
+            reply, action, products_dto, intent = self._execute_catalog_fallback(user_text, request.history or [])
 
         # Remove eventuais travessões do meio das frases para respeitar a diretriz de estilo
         clean_reply = reply.replace(" — ", ", ").replace(" - ", ", ").replace(" – ", ", ")
