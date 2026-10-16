@@ -1,6 +1,6 @@
 ---
 name: springboot-swagger
-description: Especialista em documentação viva de APIs REST com Springdoc OpenAPI 3 no Spring Boot, anotações @Operation, @ApiResponses, Schemas, exemplos e segurança Bearer JWT.
+description: "Use quando a tarefa exigir expertise em documentação viva de APIs REST com Springdoc OpenAPI 3 no Spring Boot, anotações @Operation, @ApiResponses, Schemas, exemplos e segurança Bearer JWT."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+ & Springdoc OpenAPI

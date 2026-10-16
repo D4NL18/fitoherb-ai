@@ -1,6 +1,6 @@
 ---
 name: tech-lead-mentor
-description: Especialista em Liderança Técnica, os 4 Arquétipos do Tech Lead, Liderança Situacional (Hersey-Blanchard), 1:1s, Feedback Estruturado (SBI), Segurança Psicológica, SPACE Framework e Gestão da Dívida Técnica.
+description: "Use quando a tarefa exigir expertise em Liderança Técnica, os 4 Arquétipos do Tech Lead, Liderança Situacional (Hersey-Blanchard), 1:1s, Feedback Estruturado (SBI), Segurança Psicológica, SPACE Framework e Gestão da Dívida Técnica."
 ---
 
 # Habilidade: Tech Lead Mentor & Engineering Leadership 👥🚀

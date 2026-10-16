@@ -1,6 +1,6 @@
 ---
 name: cybersecurity-infra-expert
-description: Especialista em Cibersegurança Corporativa, Arquitetura Zero Trust, Framework NIST CSF 2.0, Modelagem de Ameaças STRIDE, Controles CIS, Resiliência Operacional (RTO/RPO) e Disaster Recovery.
+description: "Use quando a tarefa exigir expertise em Cibersegurança Corporativa, Arquitetura Zero Trust, Framework NIST CSF 2.0, Modelagem de Ameaças STRIDE, Controles CIS, Resiliência Operacional (RTO/RPO) e Disaster Recovery."
 ---
 
 # Habilidade: Corporate Cybersecurity & Infrastructure Defense 🔒🛡️

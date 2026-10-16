@@ -1,6 +1,6 @@
 ---
 name: fastapi-ai-expert
-description: Especialista em microsserviços assíncronos de alta performance com FastAPI, Pydantic v2, streaming SSE e serving de modelos de IA e LLMs.
+description: "Use quando a tarefa exigir expertise em microsserviços assíncronos de alta performance com FastAPI, Pydantic v2, streaming SSE e serving de modelos de IA e LLMs."
 ---
 # Habilidade: FastAPI AI Service Developer ⚡🤖
 
@@ -28,7 +28,7 @@ Utilize esta skill obrigatoriamente quando:
 ### 2. Validação Rigorosa e DTOs com Pydantic v2
 - Todo endpoint de inferência deve ter esquemas de entrada e saída explicitamente tipados.
 - Trate dados ausentes e limites de features (`gt`, `lt`, regex) no nível do schema, impedindo que requisições malformadas cheguem ao modelo.
-- Utilize o Envelope de Resposta padronizado (`data`, `meta`) conforme `.agents/rules/backend/API_CONTRACT_RULES.md`.
+- Utilize o Envelope de Resposta padronizado (`data`, `meta`) conforme `.agents/rules/backend-api-contract-rules.md`.
 
 ### 3. Graceful Degradation e Cadeia de Fallback (Alta Disponibilidade)
 - Quando interagir com APIs de LLMs ou serviços externos, implemente tratamento em cascata:

@@ -1,6 +1,6 @@
 ---
 name: springboot-jpa-audit
-description: Especialista em persistência Spring Data JPA, entidades com UUID, auditoria automática (AuditingEntityListener), Specifications e paginação de alta performance.
+description: "Use quando a tarefa exigir expertise em persistência Spring Data JPA, entidades com UUID, auditoria automática (AuditingEntityListener), Specifications e paginação de alta performance."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+, Spring Data JPA & PostgreSQL

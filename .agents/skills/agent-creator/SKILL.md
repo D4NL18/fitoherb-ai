@@ -1,6 +1,6 @@
 ---
 name: agent-creator
-description: "Create custom AI subagents with proper plugin structure, persona generation, and companion routing skills."
+description: "Use quando a tarefa envolver: Create custom AI subagents with proper plugin structure, persona generation, and companion routing skills."
 risk: critical
 source: community
 date_added: "2026-06-20"

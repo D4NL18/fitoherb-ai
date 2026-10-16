@@ -1,6 +1,6 @@
 ---
 name: mlops-lifecycle-expert
-description: Especialista no ciclo de vida de Machine Learning (MLOps), separação de ambientes de treino e inferência, containerização Docker multi-stage, versionamento de artefatos com Hugging Face Hub e MLflow, e mitigação de Data/Concept Drift.
+description: "Use quando a tarefa exigir expertise no ciclo de vida de Machine Learning (MLOps), separação de ambientes de treino e inferência, containerização Docker multi-stage, versionamento de artefatos com Hugging Face Hub e MLflow, e mitigação de Data/Concept Drift."
 ---
 # Habilidade: MLOps & Model Lifecycle Engineer 🔄📦
 

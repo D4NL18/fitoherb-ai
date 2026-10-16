@@ -1,6 +1,6 @@
 ---
 name: agile-coach
-description: Habilidade para fatiamento de escopo (INVEST), Abordagem Híbrida Ágil-Preditiva (PMBOK 7), Análise de Valor Agregado (EVM), Gestão de Riscos e Métricas de Fluxo.
+description: "Use quando a tarefa envolver: Habilidade para fatiamento de escopo (INVEST), Abordagem Híbrida Ágil-Preditiva (PMBOK 7), Análise de Valor Agregado (EVM), Gestão de Riscos e Métricas de Fluxo."
 ---
 
 # Habilidade: Agile Coach & Hybrid Project Leader 🏃‍♂️📋

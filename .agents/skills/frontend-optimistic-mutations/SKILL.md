@@ -1,6 +1,6 @@
 ---
 name: frontend-optimistic-mutations
-description: "A portable, framework-agnostic discipline for the write path of any React or React Native app using a query/cache layer."
+description: "Use quando a tarefa envolver: A portable, framework-agnostic discipline for the write path of any React or React Native app using a query/cache layer."
 risk: critical
 source: https://github.com/stareezy-1/frontend-architecture-skill/tree/main/skills/frontend-optimistic-mutations
 source_repo: stareezy-1/frontend-architecture-skill

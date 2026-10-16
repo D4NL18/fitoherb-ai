@@ -1,6 +1,6 @@
 ---
 name: springboot-dto-mapper
-description: Especialista em DTOs, Bean Validation com constantes regex e Mappers de alta performance com MapStruct 1.5+ no Spring Boot.
+description: "Use quando a tarefa exigir expertise em DTOs, Bean Validation com constantes regex e Mappers de alta performance com MapStruct 1.5+ no Spring Boot."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+, MapStruct & Jakarta Validation

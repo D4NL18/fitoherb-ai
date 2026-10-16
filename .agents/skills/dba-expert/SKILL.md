@@ -1,6 +1,6 @@
 ---
 name: dba-expert
-description: Habilidade para modelagem e documentação de banco de dados, conformidade com LGPD (Anonimização e Pseudonimização), geração de seeds realistas e arquitetura de dados competitiva (Data Mesh).
+description: "Use quando a tarefa envolver: Habilidade para modelagem e documentação de banco de dados, conformidade com LGPD (Anonimização e Pseudonimização), geração de seeds realistas e arquitetura de dados competitiva (Data Mesh)."
 ---
 
 # Habilidade: DBA Expert & Data Architecture 🗄️🛡️

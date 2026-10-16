@@ -1,6 +1,6 @@
 ---
 name: architect-review
-description: "Master software architect specializing in modern architecture"
+description: "Use quando a tarefa envolver: Master software architect specializing in modern architecture"
 risk: safe
 source: community
 date_added: "2026-02-27"

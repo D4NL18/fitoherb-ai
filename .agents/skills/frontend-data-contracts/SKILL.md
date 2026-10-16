@@ -1,6 +1,6 @@
 ---
 name: frontend-data-contracts
-description: "A portable, framework-agnostic discipline for type safety at the network edge of any React or React Native app."
+description: "Use quando a tarefa envolver: A portable, framework-agnostic discipline for type safety at the network edge of any React or React Native app."
 risk: critical
 source: https://github.com/stareezy-1/frontend-architecture-skill/tree/main/skills/frontend-data-contracts
 source_repo: stareezy-1/frontend-architecture-skill

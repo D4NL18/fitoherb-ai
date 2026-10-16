@@ -1,6 +1,6 @@
 ---
 name: git-expert
-description: Habilidade responsável por aplicar o Padrão de Commits, Trunk-Based Development, controle de Branches efêmeras, métricas DORA e regras de Pull Requests (PRs).
+description: "Use quando a tarefa envolver: Habilidade responsável por aplicar o Padrão de Commits, Trunk-Based Development, controle de Branches efêmeras, métricas DORA e regras de Pull Requests (PRs)."
 ---
 
 # Habilidade: Git Conventions & Trunk-Based Expert 🌳🔀

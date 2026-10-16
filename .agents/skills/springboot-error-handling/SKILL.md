@@ -1,6 +1,6 @@
 ---
 name: springboot-error-handling
-description: Especialista em tratamento global de exceções no Spring Boot com @RestControllerAdvice, envelopes padronizados (RestErrorMessage / RestValidationErrorMessage) e mensagens amigáveis.
+description: "Use quando a tarefa exigir expertise em tratamento global de exceções no Spring Boot com @RestControllerAdvice, envelopes padronizados (RestErrorMessage / RestValidationErrorMessage) e mensagens amigáveis."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+, Bean Validation & Global Exceptions

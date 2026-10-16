@@ -1,6 +1,6 @@
 ---
 name: pm-skills
-description: Suíte completa de Product Management (PM Skills Marketplace). Da descoberta à estratégia, execução, lançamento e métricas — PRDs, User Stories, Lean Canvas, Priorização, OKRs, GTM, Discovery e Análise de Produto.
+description: "Use quando a tarefa envolver: Suíte completa de Product Management (PM Skills Marketplace). Da descoberta à estratégia, execução, lançamento e métricas — PRDs, User Stories, Lean Canvas, Priorização, OKRs, GTM, Discovery e Análise de Produto."
 ---
 
 # Habilidade: Product Management Operating System (PM-Skills) 🧭🚀
