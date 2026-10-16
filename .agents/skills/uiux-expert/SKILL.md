@@ -1,6 +1,6 @@
 ---
 name: uiux-expert
-description: Especialista definitivo em Design de Interfaces e Experiência do Usuário (UI/UX), Design Systems, Design Plans por feature, Hallmark Anti-AI-Slop (audits, redesigns, study), 21 macroestruturas e 8 estados obrigatórios por componente.
+description: "Use quando a tarefa exigir expertise em Design de Interfaces e Experiência do Usuário (UI/UX), Design Systems, Design Plans por feature, Hallmark Anti-AI-Slop (audits, redesigns, study), 21 macroestruturas e 8 estados obrigatórios por componente."
 license: MIT
 metadata:
   framework: Hallmark v1.1 & Core UI/UX Architecture
@@ -102,7 +102,7 @@ Nenhuma linha de código de Frontend deve ser escrita pelo Desenvolvedor sem o D
 
 ---
 
-## 6. Playbook Anti-IA Slop (Conformidade com `UI_ANTI_PATTERNS.md`)
+## 6. Playbook Anti-IA Slop (Conformidade com `frontend-ui-anti-patterns.md`)
 
 - ❌ **Gradientes Azul-Roxo Elétrico:** Veto absoluto a gradientes azul para roxo em temas escuros ("AI Purple").
 - ❌ **SaaS de 3 Colunas Mecânico:** Rompa com a simetria forçada de 3 colunas com ícones de foguete/escudo/engrenagem.

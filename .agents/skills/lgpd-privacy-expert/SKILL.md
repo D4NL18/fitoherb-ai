@@ -1,6 +1,6 @@
 ---
 name: lgpd-privacy-expert
-description: Especialista em LGPD (Lei Geral de Proteção de Dados), Privacy by Design e by Default (7 princípios), Classificação de Dados Pessoais e Sensíveis, 10 Bases Legais, RIPD/DPIA e Gestão de Incidentes ANPD.
+description: "Use quando a tarefa exigir expertise em LGPD (Lei Geral de Proteção de Dados), Privacy by Design e by Default (7 princípios), Classificação de Dados Pessoais e Sensíveis, 10 Bases Legais, RIPD/DPIA e Gestão de Incidentes ANPD."
 ---
 
 # Habilidade: LGPD, Privacy by Design & Data Governance 🛡️📜

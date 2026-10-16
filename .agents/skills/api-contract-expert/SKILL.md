@@ -1,6 +1,6 @@
 ---
 name: api-contract-expert
-description: Especialista em design e documentação de Contratos de API REST, garantindo integração perfeita entre Frontend e Backend.
+description: "Use quando a tarefa exigir expertise em design e documentação de Contratos de API REST, garantindo integração perfeita entre Frontend e Backend."
 ---
 # Habilidade: API Contract Expert 🔌
 
@@ -17,7 +17,7 @@ Sempre que o Arquiteto projetar a solução técnica de uma funcionalidade, voc�
 
 ---
 
-## Regras de Design de API (Em Conformidade com `.agents/rules/backend/API_CONTRACT_RULES.md`)
+## Regras de Design de API (Em Conformidade com `.agents/rules/backend-api-contract-rules.md`)
 1. **Envelope Obrigatório:** Todas as respostas HTTP de sucesso devem estar envolvidas no padrão `{"data": ..., "meta": ...}`.
 2. **Semântica de Status HTTP:** Proibido retornar HTTP 200 para erros com `{"success": false}`. Use status codes adequados (400, 401, 403, 404, 409, 422, 500).
 3. **Paginação Mandatória:** Toda listagem deve exigir `page` e `page_size`, limitando o volume máximo retornado.

@@ -1,6 +1,6 @@
 ---
 name: context-compressor
-description: Skill de gestão de memória para sumarizar regras de features concluídas, economizando tokens de contexto.
+description: "Use quando a tarefa envolver: Skill de gestão de memória para sumarizar regras de features concluídas, economizando tokens de contexto."
 ---
 # Habilidade: Context Compressor
 

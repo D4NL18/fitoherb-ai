@@ -1,6 +1,6 @@
 ---
 name: database-admin
-description: Expert database administrator specializing in modern cloud databases, automation, and reliability engineering.
+description: "Use quando a tarefa envolver: Expert database administrator specializing in modern cloud databases, automation, and reliability engineering."
 risk: critical
 source: community
 date_added: '2026-02-27'

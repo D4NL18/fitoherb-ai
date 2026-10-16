@@ -1,6 +1,6 @@
 ---
 name: tech-innovation-expert
-description: Especialista em Gestão da Inovação Tecnológica, Três Horizontes de McKinsey, Ambidestria Organizacional, Lean Startup, Customer Development, Design Thinking e Modelos de Plataformas Exponenciais.
+description: "Use quando a tarefa exigir expertise em Gestão da Inovação Tecnológica, Três Horizontes de McKinsey, Ambidestria Organizacional, Lean Startup, Customer Development, Design Thinking e Modelos de Plataformas Exponenciais."
 ---
 
 # Habilidade: Tech Innovation & Digital Transformation Expert 💡🚀

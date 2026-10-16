@@ -1,6 +1,6 @@
 ---
 name: responsible-ai-governance
-description: Especialista em Governança de IA Responsável, Framework WEF Playbook 2025, Mitigação de Viés Algorítmico, Transparência (XAI), Red Teaming de IA, Privacidade em LLMs e Alinhamento com EU AI Act e PL 2338/2023.
+description: "Use quando a tarefa exigir expertise em Governança de IA Responsável, Framework WEF Playbook 2025, Mitigação de Viés Algorítmico, Transparência (XAI), Red Teaming de IA, Privacidade em LLMs e Alinhamento com EU AI Act e PL 2338/2023."
 ---
 
 # Habilidade: Responsible AI Governance & Ethics Expert 🤖⚖️

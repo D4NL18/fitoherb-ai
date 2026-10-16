@@ -1,9 +1,17 @@
 import pytest
+from unittest.mock import MagicMock
+from fastapi.testclient import TestClient
+
+from app.main import app
 from app.domains.chat.schemas.chat_dto import ChatRequest
 from app.domains.chat.services.guardrails_service import GuardrailsService
 from app.domains.chat.services.intent_router import IntentRouter
 from app.domains.chat.services.chat_orchestrator import ChatOrchestrator
+from app.domains.chat.services.cache_service import ConversationCacheService
 from app.domains.chat.infrastructure.catalog_index import CatalogIndex
+from app.domains.chat.infrastructure.gemini_client import GeminiChatDecision
+
+client = TestClient(app)
 
 
 def test_guardrails_blocks_injection():
@@ -31,7 +39,7 @@ def test_guardrails_blocks_commercial_pricing():
 
 def test_intent_router_static_knowledge():
     router = IntentRouter()
-    
+
     # Endereço
     res = router.route_static("Onde fica a Fitoherb?")
     assert res is not None
@@ -86,3 +94,106 @@ def test_orchestrator_product_query_auto_redirect():
     assert res.data.action.auto_redirect is True
     assert "whey 100%" in res.data.action.filters.search.lower()
     assert len(res.data.products) >= 1
+
+
+def test_static_instagram_and_social_media_zero_tokens():
+    # Arrange
+    queries = [
+        "Qual o Instagram da Fitoherb?",
+        "Quais as redes sociais da empresa?"
+    ]
+
+    for query in queries:
+        # Act
+        response = client.post("/api/v1/chat/messages", json={"message": query})
+
+        # Assert
+        assert response.status_code == 200
+        payload = response.json()
+        data = payload["data"]
+        meta = payload["meta"]
+
+        assert data["intent"] == "COMPANY_SOCIAL"
+        assert data["action"]["type"] == "NONE"
+        assert data["action"]["auto_redirect"] is False
+        assert "@fitoherb" in data["reply"]
+        assert "https://www.instagram.com/fitoherb" in data["reply"]
+        assert "(71) 99241-9709" in data["reply"]
+        assert "https://wa.me/5571992419709" in data["reply"]
+        assert " — " not in data["reply"]
+        assert " - " not in data["reply"]
+        assert meta["cache"] == "STATIC_KB"
+        assert meta["tokens"]["prompt_tokens"] == 0
+        assert meta["tokens"]["completion_tokens"] == 0
+
+
+def test_static_whatsapp_contact_zero_tokens():
+    # Arrange
+    queries = [
+        "Qual o WhatsApp de vocês?",
+        "Tem zap para contato?"
+    ]
+
+    for query in queries:
+        # Act
+        response = client.post("/api/v1/chat/messages", json={"message": query})
+
+        # Assert
+        assert response.status_code == 200
+        payload = response.json()
+        data = payload["data"]
+        meta = payload["meta"]
+
+        assert data["intent"] == "COMPANY_CONTACT"
+        assert data["action"]["type"] == "NONE"
+        assert data["action"]["auto_redirect"] is False
+        assert "(71) 99241-9709" in data["reply"]
+        assert "https://wa.me/5571992419709" in data["reply"]
+        assert "@fitoherb" in data["reply"]
+        assert " — " not in data["reply"]
+        assert " - " not in data["reply"]
+        assert meta["cache"] == "STATIC_KB"
+        assert meta["tokens"]["prompt_tokens"] == 0
+        assert meta["tokens"]["completion_tokens"] == 0
+
+
+def test_compound_product_and_social_query_delegates_to_orchestrator():
+    # Arrange
+    ConversationCacheService.clear()
+    router = IntentRouter()
+    compound_query = "Vocês têm creatina e qual o Instagram?"
+
+    mock_gemini = MagicMock()
+    mock_gemini.is_ready = True
+    mock_gemini.model_name = "gemini-2.5-flash"
+    mock_gemini.generate_chat_decision.return_value = GeminiChatDecision(
+        reply="Temos opções de creatina no catálogo. Nosso Instagram oficial é @fitoherb (https://www.instagram.com/fitoherb) e nosso WhatsApp é (71) 99241-9709.",
+        should_redirect=True,
+        catalog_search="creatina"
+    )
+
+    orchestrator = ChatOrchestrator(gemini_client=mock_gemini)
+    orchestrator.catalog_index.set_catalog([
+        {"name": "Creatina Creapure 300g", "slug": "creatina-creapure-300g", "category": "Suplementos", "supplier": "Max Titanium"}
+    ])
+
+    # Act
+    static_res = router.route_static(compound_query)
+    res = orchestrator.process_message(ChatRequest(message=compound_query))
+
+    # Assert
+    assert static_res is None
+    assert mock_gemini.generate_chat_decision.called
+    call_kwargs = mock_gemini.generate_chat_decision.call_args.kwargs
+    system_instruction = call_kwargs["system_instruction"]
+
+    assert "@fitoherb" in system_instruction
+    assert "https://www.instagram.com/fitoherb" in system_instruction
+    assert "(71) 99241-9709" in system_instruction
+    assert "https://wa.me/5571992419709" in system_instruction
+    assert res.data.intent == "PRODUCT_SEARCH"
+    assert res.data.action.type == "NAVIGATE_CATALOG"
+    assert res.data.action.auto_redirect is True
+    assert res.data.action.filters.search == "creatina"
+    assert "@fitoherb" in res.data.reply
+    assert "(71) 99241-9709" in res.data.reply

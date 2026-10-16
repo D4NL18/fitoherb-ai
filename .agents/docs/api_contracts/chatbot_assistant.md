@@ -38,7 +38,7 @@ Processa a mensagem do usuário, gerencia histórico, aplica roteamento de inten
 
 ---
 
-#### Resposta de Sucesso (`200 OK`):
+#### Resposta de Sucesso — Busca de Produtos (`200 OK`):
 ```json
 {
   "data": {
@@ -82,9 +82,52 @@ Processa a mensagem do usuário, gerencia histórico, aplica roteamento de inten
 }
 ```
 
+#### Resposta de Sucesso — Redes Sociais e Canais Digitais (`200 OK` — 0 Tokens `P-308` / `P-312`):
+```json
+{
+  "data": {
+    "reply": "Nosso Instagram oficial é @fitoherb (https://www.instagram.com/fitoherb) e nosso WhatsApp de atendimento é (71) 99241-9709 (https://wa.me/5571992419709).",
+    "intent": "COMPANY_SOCIAL",
+    "action": {
+      "type": "NONE",
+      "auto_redirect": false,
+      "filters": {
+        "category": [],
+        "supplier": [],
+        "search": ""
+      }
+    },
+    "products": [],
+    "suggestions": [
+      "Onde fica a Fitoherb?",
+      "Quais as opções de Whey?",
+      "Como falar com o comercial?"
+    ]
+  },
+  "meta": {
+    "cache": "STATIC_KB",
+    "tokens": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0
+    }
+  }
+}
+```
+
+#### Valores Padronizados de Intenção (`data.intent`):
+- `GREETING`: Saudação inicial resolvida estaticamente (`0 tokens`).
+- `COMPANY_LOCATION`: Endereço e localização da sede em Lauro de Freitas - BA (`0 tokens`).
+- `COMPANY_CONTACT`: Telefones `(71) 3379-7717`, WhatsApp `(71) 99241-9709` (`https://wa.me/5571992419709`), e-mail `comercial@fitoherb.com.br` e Instagram `@fitoherb` (`0 tokens`, `P-301`, `P-308`, `P-312`).
+- `COMPANY_SOCIAL`: Redes sociais e canais digitais oficiais — Instagram `@fitoherb` (`https://www.instagram.com/fitoherb`) e WhatsApp `(71) 99241-9709` (`https://wa.me/5571992419709`) (`0 tokens`, `P-308`, `P-312`).
+- `COMPANY_ABOUT`: Histórico e atuação institucional da Fitoherb (`0 tokens`).
+- `COMPANY_COVERAGE`: Cobertura geográfica nos estados da Bahia e Sergipe (`0 tokens`).
+- `PRODUCT_SEARCH`: Busca semântica de itens no catálogo com `action.type = "NAVIGATE_CATALOG"`.
+- `GENERAL_QUERY`: Consulta institucional composta ou conversacional geral sem redirecionamento (`action.type = "NONE"`).
+- `INJECTION_BLOCKED` / `MEDICAL_RESTRICTED` / `COMMERCIAL_RESTRICTED`: Bloqueios determinísticos do `GuardrailsService` (`0 tokens`).
+
 #### Possíveis Ações (`action.type`):
 - `NAVIGATE_CATALOG`: Comanda o front-end a navegar imediatamente para `/produtos` com os parâmetros fornecidos em `filters` (`auto_redirect: true`).
-- `NONE`: Interação puramente conversacional ou informativa (ex: endereço, dúvidas institucionais), sem navegação.
+- `NONE`: Interação puramente conversacional ou informativa (ex: endereço, redes sociais, WhatsApp, Instagram, dúvidas institucionais), sem navegação.
 
 ---
 

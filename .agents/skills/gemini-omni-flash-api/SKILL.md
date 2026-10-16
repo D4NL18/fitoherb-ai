@@ -1,6 +1,6 @@
 ---
 name: gemini-omni-flash-api
-description: "Use this skill for generative video editing, text-to-video, image-referenced video generation, and first-frame-to-video transition animations using the official google-genai SDK."
+description: "Use quando a tarefa envolver edição generativa de vídeo, text-to-video, geração de vídeo referenciada por imagem ou animações de transição first-frame-to-video com o SDK oficial google-genai."
 risk: critical
 source: https://github.com/google-gemini/gemini-skills/tree/main/skills/gemini-omni-flash-api
 source_repo: google-gemini/gemini-skills

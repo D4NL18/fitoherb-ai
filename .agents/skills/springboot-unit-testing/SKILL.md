@@ -1,6 +1,6 @@
 ---
 name: springboot-unit-testing
-description: Especialista em testes unitários e de integração no Spring Boot com JUnit 5, Mockito, suítes aninhadas @Nested, mock de auditoria e @DataJpaTest.
+description: "Use quando a tarefa exigir expertise em testes unitários e de integração no Spring Boot com JUnit 5, Mockito, suítes aninhadas @Nested, mock de auditoria e @DataJpaTest."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+, JUnit 5 & Mockito

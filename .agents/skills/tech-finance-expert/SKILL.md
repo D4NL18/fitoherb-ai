@@ -1,6 +1,6 @@
 ---
 name: tech-finance-expert
-description: Especialista em Finanças Corporativas para Líderes de TI, DRE, EBITDA, Gestão de Caixa vs Lucro, Capex vs Opex, Viabilidade Econômica (VPL, TIR, Payback, TCO), Orçamento Base Zero e Unit Economics.
+description: "Use quando a tarefa exigir expertise em Finanças Corporativas para Líderes de TI, DRE, EBITDA, Gestão de Caixa vs Lucro, Capex vs Opex, Viabilidade Econômica (VPL, TIR, Payback, TCO), Orçamento Base Zero e Unit Economics."
 ---
 
 # Habilidade: Tech Finance & Valuation Expert 💼📈

@@ -1,6 +1,6 @@
 ---
 name: negotiation-stakeholder-expert
-description: Especialista em Negociação Estratégica para Líderes de Tecnologia, Método de Harvard, BATNA (MAANA), ZOPA, Resolução Construtiva de Conflitos e Gestão de Stakeholders (Matriz de Mendelow).
+description: "Use quando a tarefa exigir expertise em Negociação Estratégica para Líderes de Tecnologia, Método de Harvard, BATNA (MAANA), ZOPA, Resolução Construtiva de Conflitos e Gestão de Stakeholders (Matriz de Mendelow)."
 ---
 
 # Habilidade: Strategic Negotiation & Stakeholder Management 🤝⚖️
