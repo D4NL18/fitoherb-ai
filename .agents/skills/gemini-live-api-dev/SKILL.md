@@ -1,6 +1,6 @@
 ---
 name: gemini-live-api-dev
-description: "Use this skill when building real-time, bidirectional streaming applications with the Gemini Live API."
+description: "Use quando construir aplicações de streaming bidirecional em tempo real (áudio/vídeo/WebSockets) com a Gemini Live API."
 risk: critical
 source: https://github.com/google-gemini/gemini-skills/tree/main/skills/gemini-live-api-dev
 source_repo: google-gemini/gemini-skills

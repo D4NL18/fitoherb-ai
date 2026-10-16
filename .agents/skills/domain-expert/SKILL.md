@@ -1,6 +1,6 @@
 ---
 name: domain-expert
-description: Especialista em Domain-Driven Design (DDD). Mantém a Linguagem Ubíqua e a consistência das regras de negócio do projeto unificadas no Glossário.
+description: "Use quando a tarefa exigir expertise em Domain-Driven Design (DDD). Mantém a Linguagem Ubíqua e a consistência das regras de negócio do projeto unificadas no Glossário."
 ---
 
 # Habilidade: Domain Expert (DDD)

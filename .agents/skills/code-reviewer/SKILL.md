@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: "Elite code review expert specializing in modern AI-powered code"
+description: "Use quando a tarefa envolver: Elite code review expert specializing in modern AI-powered code"
 risk: critical
 source: community
 date_added: "2026-02-27"

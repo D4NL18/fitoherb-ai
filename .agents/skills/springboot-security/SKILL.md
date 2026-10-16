@@ -1,6 +1,6 @@
 ---
 name: springboot-security
-description: Especialista em Spring Security, autenticação Stateless JWT (Auth0), suporte dual (Cookie HttpOnly + Bearer), CORS avançado e autorização declarativa @PreAuthorize.
+description: "Use quando a tarefa exigir expertise em Spring Security, autenticação Stateless JWT (Auth0), suporte dual (Cookie HttpOnly + Bearer), CORS avançado e autorização declarativa @PreAuthorize."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+, Spring Security & Auth0 JWT

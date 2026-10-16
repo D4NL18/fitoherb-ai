@@ -1,6 +1,6 @@
 ---
 name: fastapi-expert
-description: Especialista em Python FastAPI, tipagem Pydantic e processamento assíncrono.
+description: "Use quando a tarefa exigir expertise em Python FastAPI, tipagem Pydantic e processamento assíncrono."
 ---
 # Habilidade: FastAPI Expert
 

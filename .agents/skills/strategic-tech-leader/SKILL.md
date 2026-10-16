@@ -1,6 +1,6 @@
 ---
 name: strategic-tech-leader
-description: Habilidade para Liderança Estratégica de TI, Alinhamento Estratégico Negócio-Tecnologia (SAM), Cadeia de Valor, 5 Forças de Porter, MTP e Arquitetura Corporativa.
+description: "Use quando a tarefa envolver: Habilidade para Liderança Estratégica de TI, Alinhamento Estratégico Negócio-Tecnologia (SAM), Cadeia de Valor, 5 Forças de Porter, MTP e Arquitetura Corporativa."
 ---
 
 # Habilidade: Strategic Tech Leader 🏛️🎯

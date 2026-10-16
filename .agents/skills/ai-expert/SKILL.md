@@ -1,6 +1,6 @@
 ---
 name: ai-expert
-description: Especialista em Machine Learning, Visão Computacional, LLMs, Function Calling determinístico, Tokenomics Extrema, Matriz de Casos de Uso (McKinsey TMT), ROI de IA 2025 e Agentes Autônomos de Raciocínio.
+description: "Use quando a tarefa exigir expertise em Machine Learning, Visão Computacional, LLMs, Function Calling determinístico, Tokenomics Extrema, Matriz de Casos de Uso (McKinsey TMT), ROI de IA 2025 e Agentes Autônomos de Raciocínio."
 ---
 
 # Habilidade: AI / ML Expert, Tokenomics & Strategic Adoption 🧠⚡

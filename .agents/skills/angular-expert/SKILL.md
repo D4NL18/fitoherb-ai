@@ -1,6 +1,6 @@
 ---
 name: angular-expert
-description: Especialista oficial em desenvolvimento Angular moderno, arquitetura reativa com Signals, Signal Forms, criação de novas aplicações com Angular CLI, SSR, Angular Aria, injeção com inject() e estilização com SCSS/Tailwind.
+description: "Use quando a tarefa exigir expertise em desenvolvimento Angular moderno, arquitetura reativa com Signals, Signal Forms, criação de novas aplicações com Angular CLI, SSR, Angular Aria, injeção com inject() e estilização com SCSS/Tailwind."
 license: MIT
 metadata:
   author: Angular Team @ Google & Core Architecture Team

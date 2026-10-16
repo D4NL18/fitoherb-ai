@@ -1,6 +1,6 @@
 ---
 name: springboot-expert
-description: Especialista mestre em Java Spring Boot (Java 21), orquestrando Swagger/OpenAPI, Spring Security JWT, RestExceptionHandler, testes Mockito e persistência JPA com MapStruct.
+description: "Use quando a tarefa exigir expertise em Java Spring Boot (Java 21), orquestrando Swagger/OpenAPI, Spring Security JWT, RestExceptionHandler, testes Mockito e persistência JPA com MapStruct."
 license: MIT
 metadata:
   framework: Spring Boot 3+ / 4+ & Java 21

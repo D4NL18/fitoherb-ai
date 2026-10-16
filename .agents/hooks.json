@@ -1,14 +1,16 @@
 {
-  "on_agent_complete": [
-    {
-      "name": "Run Linter",
-      "command": "npm run lint || echo \"Linter falhou, verifique os erros\"",
-      "working_dir": "./"
-    },
-    {
-      "name": "Run Unit Tests",
-      "command": "npm run test || echo \"Testes falharam, favor refatorar\"",
-      "working_dir": "./"
-    }
-  ]
+  "project-quality-gates": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "npm run lint || echo \"Linter falhou, verifique os erros\"",
+        "timeout": 60
+      },
+      {
+        "type": "command",
+        "command": "npm run test || echo \"Testes falharam, favor refatorar\"",
+        "timeout": 60
+      }
+    ]
+  }
 }
