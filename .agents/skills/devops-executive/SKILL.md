@@ -1,6 +1,6 @@
 ---
 name: devops-executive
-description: Especialista em Estratégia e Implementação Executiva de DevOps, Cultura CAMS, Métricas DORA no C-Level, Trunk-Based Development, Quality Gates Automatizados, GitOps e Engenharia de Resiliência.
+description: "Use quando a tarefa exigir expertise em Estratégia e Implementação Executiva de DevOps, Cultura CAMS, Métricas DORA no C-Level, Trunk-Based Development, Quality Gates Automatizados, GitOps e Engenharia de Resiliência."
 ---
 
 # Habilidade: Executive DevOps & Continuous Delivery Strategy ⚙️📊

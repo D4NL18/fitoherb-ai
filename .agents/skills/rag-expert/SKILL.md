@@ -1,6 +1,6 @@
 ---
 name: rag-expert
-description: Especialista em Arquiteturas RAG (Retrieval-Augmented Generation), ingestão documental, higienização de PII (LGPD), bancos vetoriais (ChromaDB/pgvector), embeddings, prevenção contra Prompt Injection e avaliação de fidelidade (Ragas).
+description: "Use quando a tarefa exigir expertise em Arquiteturas RAG (Retrieval-Augmented Generation), ingestão documental, higienização de PII (LGPD), bancos vetoriais (ChromaDB/pgvector), embeddings, prevenção contra Prompt Injection e avaliação de fidelidade (Ragas)."
 ---
 
 # Habilidade: RAG, Vector Search & Responsible Knowledge Retrieval 📚🔍

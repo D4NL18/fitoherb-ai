@@ -1,6 +1,6 @@
 ---
 name: business-rules-expert
-description: Especialista na redação e documentação de Regras de Negócio estruturadas sob o padrão P-XXX.
+description: "Use quando a tarefa exigir expertise na redação e documentação de Regras de Negócio estruturadas sob o padrão P-XXX."
 ---
 # Habilidade: Business Rules Expert 📋
 

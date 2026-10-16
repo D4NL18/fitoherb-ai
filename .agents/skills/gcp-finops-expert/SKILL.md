@@ -1,6 +1,6 @@
 ---
 name: gcp-finops-expert
-description: Especialista em Arquitetura Google Cloud (GCP) com foco extremo em redução de custos (FinOps), DRE de Nuvem, Capex vs Opex, ROI de IA (Google Cloud 2025) e FinOps Scorecard >= 4.80.
+description: "Use quando a tarefa exigir expertise em Arquitetura Google Cloud (GCP) com foco extremo em redução de custos (FinOps), DRE de Nuvem, Capex vs Opex, ROI de IA (Google Cloud 2025) e FinOps Scorecard >= 4.80."
 ---
 
 # Habilidade: Expert em GCP FinOps & Cloud Economics ☁️💰

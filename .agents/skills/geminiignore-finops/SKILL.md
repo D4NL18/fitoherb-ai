@@ -1,6 +1,6 @@
 ---
 name: geminiignore-finops
-description: "Configure and optimize .geminiignore files for AI context window efficiency and token cost reduction (FinOps)."
+description: "Use quando a tarefa envolver: Configure and optimize .geminiignore files for AI context window efficiency and token cost reduction (FinOps)."
 category: context-optimization
 risk: safe
 source: community

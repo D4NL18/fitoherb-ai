@@ -1,6 +1,6 @@
 ---
 name: ml-pipeline-expert
-description: Especialista em esteiras de Machine Learning tabular clássico com Scikit-Learn, pré-processamento, prevenção contra Data Leakage, calibração com predict_proba e serialização de modelos.
+description: "Use quando a tarefa exigir expertise em esteiras de Machine Learning tabular clássico com Scikit-Learn, pré-processamento, prevenção contra Data Leakage, calibração com predict_proba e serialização de modelos."
 ---
 # Habilidade: Scikit-Learn ML Pipeline Engineer 📊🔬
 

@@ -1,6 +1,6 @@
 ---
 name: deep-learning-cv-expert
-description: Especialista em Redes Neurais Profundas, Visão Computacional, CNNs, U-Net, transfer learning e aceleração por GPU/CUDA com PyTorch.
+description: "Use quando a tarefa exigir expertise em Redes Neurais Profundas, Visão Computacional, CNNs, U-Net, transfer learning e aceleração por GPU/CUDA com PyTorch."
 ---
 # Habilidade: Deep Learning & Computer Vision Architect 👁️🧠
 
