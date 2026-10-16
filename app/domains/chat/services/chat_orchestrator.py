@@ -28,7 +28,7 @@ class ChatOrchestrator:
     3. Cache L1
     4. Compactação de Histórico (P-307)
     5. Busca no Catálogo Indexado (P-304, P-305)
-    6. Chamada concisa ao Gemini Flash (P-306, P-309)
+    6. Chamada concisa ao Gemini Flash (P-306, P-309, P-312)
     """
 
     def __init__(self, gemini_client: Optional[GeminiClient] = None):
@@ -103,7 +103,11 @@ class ChatOrchestrator:
                 )
         else:
             intent = "GENERAL_QUERY"
-            reply = "Não tenho essa informação no momento. Por favor, entre em contato com nossa equipe comercial pelo telefone (71) 3379-7717."
+            reply = (
+                "Não tenho essa informação no momento. Por favor, entre em contato com nossa equipe comercial "
+                "pelo telefone (71) 3379-7717, pelo WhatsApp (71) 99241-9709 (https://wa.me/5571992419709) "
+                "ou pelo Instagram @fitoherb (https://www.instagram.com/fitoherb)."
+            )
             action = ChatActionDto(type="NONE", auto_redirect=False)
 
         return reply, action, products_dto, intent
@@ -144,7 +148,7 @@ class ChatOrchestrator:
                 meta={"guardrail": "COMMERCIAL_RESTRICTED", "tokens": {"prompt_tokens": 0, "completion_tokens": 0}}
             )
 
-        # 4. IntentRouter: Fatos Estáticos da Empresa / Saudações (P-308)
+        # 4. IntentRouter: Fatos Estáticos da Empresa / Saudações (P-308, P-312)
         static_route = self.intent_router.route_static(user_text)
         if static_route:
             reply_text, intent_name = static_route
@@ -174,7 +178,7 @@ class ChatOrchestrator:
         else:
             condensed_history = [{"role": m.role, "content": m.content} for m in history_items]
 
-        # 7. Interpretação Semântica e Decisão de Roteamento via Gemini Structured Output (P-309)
+        # 7. Interpretação Semântica e Decisão de Roteamento via Gemini Structured Output (P-309, P-312)
         action = ChatActionDto(type="NONE", auto_redirect=False)
         products_dto: List[ProductSnippetDto] = []
         reply = ""
@@ -187,17 +191,24 @@ class ChatOrchestrator:
                 system_instruction = (
                     "Você é o assistente virtual oficial da Fitoherb, distribuidora de suplementos e produtos naturais no Nordeste.\n"
                     "Seu objetivo é orientar clientes e ajudá-los a encontrar produtos no catálogo com máxima naturalidade.\n\n"
+                    "CANAIS OFICIAIS E REDES SOCIAIS DA FITOHERB (P-301, P-312):\n"
+                    "Telefone fixo comercial: (71) 3379-7717\n"
+                    "WhatsApp oficial: (71) 99241-9709 (link direto: https://wa.me/5571992419709)\n"
+                    "Instagram oficial: @fitoherb (link direto: https://www.instagram.com/fitoherb)\n"
+                    "E-mail comercial: comercial@fitoherb.com.br\n"
+                    "Endereço: Rua Itaeté, 434, Pitangueiras, Lauro de Freitas/BA, CEP: 42701-360\n\n"
                     "DIRETRIZES OBRIGATÓRIAS:\n"
                     "1. Responda em português (Brasil) em no máximo 2 a 3 frases curtas e diretas.\n"
                     "2. NUNCA use palavras difíceis e NUNCA use travessões (-) ou meias-riscas (—) no meio das frases.\n"
                     "3. Trate todas as marcas parceiras com absoluta neutralidade e igualdade.\n"
                     "   Marcas parceiras oficiais: Integralmedica, Black Skull, Max Titanium, Probiotica, FTW, Flora Nativa, Mandiervas, Katigua, Apisnutri, Chamel, Vital Atman, Unilife.\n"
                     "4. INTERPRETAÇÃO DO FILTRO (catalog_search):\n"
-                    "   - O que o usuário digita é livre e não é fixo. Interprete o que ele realmente quer buscar.\n"
-                    "   - Se a intenção for buscar produtos, defina 'should_redirect': true e preencha 'catalog_search' com o termo limpo e semântico para filtrar o catálogo (ex: 'whey 100%', 'creatina', 'colageno', 'mel propolis').\n"
-                    "   - Se for uma pergunta de acompanhamento ou continuidade (ex: usuário estava falando de whey 100% e agora pergunta 'tem de morango?' ou 'e de chocolate?'), junte o contexto anterior em 'catalog_search' (ex: 'whey 100% morango').\n"
-                    "   - Se NÃO for sobre produtos (ex: localização, contato, institucional), defina 'should_redirect': false e 'catalog_search': ''.\n"
-                    "5. Se perguntarem algo fora do escopo (preço, tabela nutricional completa), informe que não possui essa informação e convide a contatar a equipe comercial."
+                    "   * O que o usuário digita é livre e não é fixo. Interprete o que ele realmente quer buscar.\n"
+                    "   * Se a intenção for buscar produtos, defina 'should_redirect': true e preencha 'catalog_search' com o termo limpo e semântico para filtrar o catálogo (ex: 'whey 100%', 'creatina', 'colageno', 'mel propolis').\n"
+                    "   * Se for uma pergunta de acompanhamento ou continuidade (ex: usuário estava falando de whey 100% e agora pergunta 'tem de morango?' ou 'e de chocolate?'), junte o contexto anterior em 'catalog_search' (ex: 'whey 100% morango').\n"
+                    "   * Se NÃO for sobre produtos (ex: localização, contato, redes sociais, institucional), defina 'should_redirect': false e 'catalog_search': ''.\n"
+                    "5. Se perguntarem sobre WhatsApp, Instagram ou redes sociais (inclusive em perguntas compostas com produtos), informe sempre @fitoherb (https://www.instagram.com/fitoherb) e WhatsApp (71) 99241-9709 (https://wa.me/5571992419709).\n"
+                    "6. Se perguntarem algo fora do escopo (preço, tabela nutricional completa), informe que não possui essa informação e convide a contatar a equipe comercial pelos canais oficiais."
                 )
 
                 decision = self.gemini_client.generate_chat_decision(
@@ -240,7 +251,7 @@ class ChatOrchestrator:
         else:
             reply, action, products_dto, intent = self._execute_catalog_fallback(user_text, request.history or [])
 
-        # Remove eventuais travessões do meio das frases para respeitar a diretriz de estilo
+        # Remove eventuais travessões do meio das frases para respeitar a diretriz de estilo (P-306)
         clean_reply = reply.replace(" — ", ", ").replace(" - ", ", ").replace(" – ", ", ")
 
         response_data = ChatResponseData(

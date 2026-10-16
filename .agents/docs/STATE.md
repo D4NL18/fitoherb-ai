@@ -3,23 +3,15 @@
 Este documento é mantido exclusivamente pelo **Orquestrador**. Ele serve como uma memória persistente do estado exato onde a conversa e a funcionalidade se encontram, prevenindo que as diretrizes se percam em contextos longos.
 
 ## Tarefa Atual em Foco
-- **Feature/Entidade:** Assistente Virtual Inteligente Fitoherb (Chat Gemini Flutuante com Redirecionamento e Tokenomics)
+- **Feature/Entidade:** Treinamento do Chatbot para Redes Sociais (WhatsApp e Instagram - `P-312`)
 - **Branch Atual:** `feat/chatbot-gemini-assistant`
-- **Etapa Atual do Fluxo:** Passo 12 concluído (Release via Pull Request e Verificação Final)
-- **Última Ação Realizada:** Conclusão da esteira de 12 passos, validação de testes (29/29 AI e build prod Angular 100% verde), pushes realizados nas branches de feature e links de PR gerados para `develop`.
-- **Próximo Passo Imediato:** Revisão humana e merge dos Pull Requests em `develop`.
+- **Etapa Atual do Fluxo:** Concluído (5/5 Macro-Etapas finalizadas com sucesso)
+- **Última Ação Realizada:** Etapa 5 concluída (`devops` FinOps Scorecard `4.96/5.00`, 32/32 testes aprovados no `pytest` e memória consolidada em `KNOWLEDGE_GRAPH.md`).
+- **Próximo Passo Imediato:** Aguardando nova demanda do usuário.
 
-## Progresso do Workflow (Checklist da Pipeline de 12 Passos)
-- [x] 1. Quebra de Escopo no Backlog (Product Owner)
-- [x] 2. Especificação e Regras de Negócio P-XXX (Analista)
-- [x] 3. Projetar Arquitetura, Contratos, UI e Revisão de Privacy by Design (Arquiteto, Designer, AI Specialist & Privacy Officer)
-- [x] 4. Modelagem de Dados Segura e Seeds Sintéticos (DBA)
-- [x] 5. Planejar Tarefas e Decomposição de Checklist (Arquiteto)
-- [x] 6. Desenvolver Testes Unitários TDD - Pré-código (Tester)
-- [x] 7. Executar Código na Branch de Feature (Desenvolvedor)
-- [x] 8. Code Review de Clean Code & Auditoria de Código LGPD (Reviewer & Privacy Officer)
-- [x] 9. UX Review / Vibe Check e Filtro Anti-IA Slop (UX Reviewer)
-- [x] 10. Validação de Testes QA e Loop de Auto-Healer (Tester)
-- [x] 11. Auditoria de Cibersegurança e Red Teaming (SecOps)
-- [x] 12. Validação de CI/CD, FinOps e Abertura do Pull Request (DevOps)
-
+## Progresso do Workflow (Esteira Consolidada de 5 Macro-Etapas)
+- [x] **ETAPA 1 — Descoberta, Escopo e Especificação** (`product_owner` + `analyst`)
+- [x] **ETAPA 2 — Arquitetura, UI Design Plan, Modelagem Segura e Privacy by Design** (`architect` + `ai_specialist` + `privacy_officer` — Bypass justificado de `dba` e `designer`: sem alterações de schema de banco ou layout visual)
+- [x] **ETAPA 3 — TDD e Execução** (`tester` + `developer` + `ai_specialist`)
+- [x] **ETAPA 4 — Quality Gate 360, Auditorias e Auto-Healer** (`reviewer` + `privacy_officer` + `security` + `tester` — Bypass justificado de `ux_reviewer`: sem alteração em componentes HTML/SCSS)
+- [x] **ETAPA 5 — Release, CI/CD, FinOps e Compressão de Contexto** (`devops` + `orchestrator`)

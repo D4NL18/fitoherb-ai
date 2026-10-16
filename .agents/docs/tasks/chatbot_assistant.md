@@ -48,3 +48,28 @@
 - [x] Testes unitários do AI service passando 100% (29/29)
 - [x] Subida das branches `feat/chatbot-gemini-assistant` para o GitHub nos repositórios
 - [x] Geração dos links canônicos de Pull Request apontando para `develop`
+
+---
+
+## Evolução: Treinamento de Redes Sociais - WhatsApp e Instagram (`P-301`, `P-308`, `P-312`)
+
+**Descritivo Detalhado:**
+Capacitar o Assistente Virtual Fitoherb a informar com precisão os canais digitais e redes sociais oficiais da empresa — WhatsApp `(71) 99241-9709` (`https://wa.me/5571992419709`) e Instagram `@fitoherb` (`https://www.instagram.com/fitoherb`) — tanto em consultas diretas resolvidas com 0 tokens via `IntentRouter` quanto em consultas compostas enviadas ao Gemini via `ChatOrchestrator` e `company_profile.yaml`.
+
+### Checklist Técnico Atômico por Especialidade (Etapas 2 e 3)
+
+#### 1. Governança e Contratos (`architect` + `ai_specialist` + `privacy_officer`)
+- [x] Atualizar `.agents/docs/api_contracts/chatbot_assistant.md` documentando as intenções `COMPANY_SOCIAL` e `COMPANY_CONTACT` no envelope `data`/`meta` com 100% de retrocompatibilidade.
+- [x] Definir estratégia de prompt e roteamento semântico 0 tokens (`ai_specialist`).
+- [x] Validar conformidade Privacy by Design / LGPD sobre exposição estrita de canais corporativos públicos (`privacy_officer`).
+
+#### 2. Suíte de Testes TDD-First (`tester` — `tests/test_chat_assistant.py`)
+- [x] Criar teste unitário para consulta direta de Instagram/redes sociais no `IntentRouter` (`"Qual o Instagram da Fitoherb?"`, `"Quais as redes sociais?"`), validando retorno de `@fitoherb`, `https://www.instagram.com/fitoherb`, `(71) 99241-9709` e intent `COMPANY_SOCIAL` ou `COMPANY_CONTACT`.
+- [x] Criar teste unitário para consulta direta de WhatsApp no `IntentRouter` (`"Qual o WhatsApp da Fitoherb?"`, `"Tem zap de atendimento?"`), validando retorno de `(71) 99241-9709`, link `https://wa.me/5571992419709` e consumo de `0 tokens` (`meta.cache == "STATIC_KB"`).
+- [x] Criar teste unitário no `ChatOrchestrator` validando que a `system_instruction` enviada ao Gemini e o fallback institucional incluem o WhatsApp `(71) 99241-9709` e o Instagram `@fitoherb`, sem travessões no meio de frases (`P-306`, `P-312`).
+
+#### 3. Implementação e Base de Conhecimento (`developer` + `ai_specialist`)
+- [x] Atualizar `app/domains/chat/knowledge/company_profile.yaml` adicionando campos estruturados `whatsapp`, `whatsapp_url`, `instagram` (`@fitoherb`), `instagram_url` (`https://www.instagram.com/fitoherb`) e atualizando `restricted_info_message`.
+- [x] Atualizar `app/domains/chat/services/intent_router.py` para reconhecer termos de redes sociais (`instagram`, `insta`, `rede social`, `redes sociais`, `arroba`, `perfil oficial`) retornando `COMPANY_SOCIAL`, e enriquecer a rota `COMPANY_CONTACT` (`whatsapp`, `zap`, `wpp`, `telefone`, `contato`, `email`) com os números `(71) 3379-7717`, WhatsApp `(71) 99241-9709` (`https://wa.me/5571992419709`) e Instagram `@fitoherb` (`0 tokens`, sem travessões no meio das frases).
+- [x] Atualizar `app/domains/chat/services/chat_orchestrator.py` injetando os canais oficiais (WhatsApp `(71) 99241-9709` / `https://wa.me/5571992419709`, Instagram `@fitoherb` / `https://www.instagram.com/fitoherb`, telefone `(71) 3379-7717` e e-mail `comercial@fitoherb.com.br`) na `system_instruction` do Gemini e na mensagem de fallback geral (`_execute_catalog_fallback`).
+- [x] Executar `pytest` garantindo 100% de aprovação na suíte completa do `fitoherb-ai` (32/32 aprovados).
