@@ -1,9 +1,7 @@
 import io
 import base64
-from typing import Optional
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -12,16 +10,17 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     Image as RLImage,
-    KeepTogether
 )
 from app.domains.routing.schemas.routing_dto import ExportPdfRequest
+
 
 class PdfReportService:
     @staticmethod
     def generate_route_manifest(request: ExportPdfRequest) -> bytes:
         """
-        Gera o documento PDF do roteiro de visitas da Fitoherb (Regra P-105).
-        Não exibe coordenadas latitude/longitude, exibindo apenas dados legíveis de endereço.
+        Gera o documento PDF do roteiro de visitas da Fitoherb (Regras P-105 e P-107).
+        Não exibe coordenadas latitude/longitude em nenhuma hipótese, exibindo apenas
+        dados legíveis de endereço, sugestões identificadas e inteligência demográfica das cidades.
         """
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
@@ -30,55 +29,65 @@ class PdfReportService:
             rightMargin=36,
             leftMargin=36,
             topMargin=36,
-            bottomMargin=36
+            bottomMargin=36,
         )
 
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
-            'FitoTitle',
-            parent=styles['Heading1'],
+            "FitoTitle",
+            parent=styles["Heading1"],
             fontSize=18,
             leading=22,
-            textColor=colors.HexColor('#1E3A8A'), # Navy Fitoherb
-            spaceAfter=4
+            textColor=colors.HexColor("#1E3A8A"),
+            spaceAfter=4,
         )
         subtitle_style = ParagraphStyle(
-            'FitoSubtitle',
-            parent=styles['Normal'],
+            "FitoSubtitle",
+            parent=styles["Normal"],
             fontSize=10,
             leading=14,
-            textColor=colors.HexColor('#4B5563')
+            textColor=colors.HexColor("#4B5563"),
         )
         cell_header_style = ParagraphStyle(
-            'CellHeader',
-            parent=styles['Normal'],
-            fontSize=9,
+            "CellHeader",
+            parent=styles["Normal"],
+            fontSize=8.5,
             leading=11,
-            fontName='Helvetica-Bold',
-            textColor=colors.white
+            fontName="Helvetica-Bold",
+            textColor=colors.white,
         )
         cell_text_style = ParagraphStyle(
-            'CellText',
-            parent=styles['Normal'],
+            "CellText",
+            parent=styles["Normal"],
             fontSize=8,
             leading=10,
-            textColor=colors.HexColor('#1F2937')
+            textColor=colors.HexColor("#1F2937"),
         )
         cell_bold_style = ParagraphStyle(
-            'CellBold',
-            parent=styles['Normal'],
+            "CellBold",
+            parent=styles["Normal"],
             fontSize=8,
             leading=10,
-            fontName='Helvetica-Bold',
-            textColor=colors.HexColor('#111827')
+            fontName="Helvetica-Bold",
+            textColor=colors.HexColor("#111827"),
         )
 
         elements = []
 
         # 1. Cabeçalho Institucional
         elements.append(Paragraph("FITOHERB NORDESTE", title_style))
-        elements.append(Paragraph(f"<b>Roteiro Oficial de Visitas Comerciais</b> | Emissão: {request.date}", subtitle_style))
-        elements.append(Paragraph(f"<b>Vendedor:</b> {request.seller_name} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Total de Paradas:</b> {len(request.ordered_stops)}", subtitle_style))
+        elements.append(
+            Paragraph(
+                f"<b>Roteiro Oficial de Visitas Comerciais</b> | Emissão: {request.date}",
+                subtitle_style,
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"<b>Vendedor:</b> {request.seller_name} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Total de Etapas:</b> {len(request.ordered_stops)}",
+                subtitle_style,
+            )
+        )
         elements.append(Spacer(1, 10))
 
         # 2. Resumo de Métricas (KPI Cards)
@@ -86,47 +95,135 @@ class PdfReportService:
         mins = int(round(request.total_time_minutes % 60))
         time_str = f"{hours}h {mins}min" if hours > 0 else f"{mins} min"
 
+        visit_count = sum(1 for s in request.ordered_stops if s.action == "VISIT")
         kpi_data = [
             [
-                Paragraph(f"<b>Distância Total:</b><br/>{request.total_distance_km:.1f} km", cell_text_style),
-                Paragraph(f"<b>Tempo Estimado de Viagem:</b><br/>{time_str}", cell_text_style),
-                Paragraph(f"<b>Paradas Previstas:</b><br/>{len(request.ordered_stops) - 1 if len(request.ordered_stops) > 1 else len(request.ordered_stops)} visitas", cell_text_style)
+                Paragraph(
+                    f"<b>Distância Total:</b><br/>{request.total_distance_km:.1f} km",
+                    cell_text_style,
+                ),
+                Paragraph(
+                    f"<b>Tempo Estimado de Viagem:</b><br/>{time_str}",
+                    cell_text_style,
+                ),
+                Paragraph(
+                    f"<b>Visitas Planejadas:</b><br/>{visit_count} visitas",
+                    cell_text_style,
+                ),
             ]
         ]
         kpi_table = Table(kpi_data, colWidths=[180, 180, 180])
-        kpi_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F3F4F6')),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
-            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ]))
+        kpi_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F3F4F6")),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E5E7EB")),
+                ]
+            )
+        )
         elements.append(kpi_table)
         elements.append(Spacer(1, 12))
 
-        # 3. Imagem do Mapa (se fornecida via base64)
+        # 3. Quadro de Inteligência Demográfica e Comercial das Cidades da Rota (Regra P-107)
+        if request.city_insights:
+            elements.append(
+                Paragraph(
+                    "<b>Inteligência Demográfica e Comercial das Cidades da Rota:</b>",
+                    subtitle_style,
+                )
+            )
+            elements.append(Spacer(1, 4))
+
+            city_rows = [
+                [
+                    Paragraph("<b>Município / UF</b>", cell_header_style),
+                    Paragraph("<b>População (IBGE)</b>", cell_header_style),
+                    Paragraph("<b>Porte / PIB per capita</b>", cell_header_style),
+                    Paragraph("<b>Visitas / Sugestões</b>", cell_header_style),
+                    Paragraph("<b>Foco Comercial Recomendado</b>", cell_header_style),
+                ]
+            ]
+
+            for ci in request.city_insights:
+                pop_fmt = f"{ci.population:,}".replace(",", ".")
+                gdp_fmt = f"R$ {ci.gdp_per_capita_brl:,.0f}".replace(",", ".")
+                visits_str = (
+                    f"{ci.confirmed_stops_count} confirmada(s)<br/>"
+                    f"+ {ci.suggested_leads_count} sugestão(ões)<br/>"
+                    f"<font size='7' color='#6b7280'>~{ci.estimated_dwell_minutes} min na cidade</font>"
+                )
+                city_rows.append(
+                    [
+                        Paragraph(
+                            f"<b>{ci.city} - {ci.state}</b><br/><font size='7' color='#6b7280'>IBGE: {ci.ibge_code}</font>",
+                            cell_bold_style,
+                        ),
+                        Paragraph(
+                            f"{pop_fmt} hab<br/><font size='7' color='#6b7280'>{ci.demographic_density_hab_km2:.1f} hab/km²</font>",
+                            cell_text_style,
+                        ),
+                        Paragraph(
+                            f"{ci.city_tier_label}<br/><font size='7' color='#047857'>PIB/hab: {gdp_fmt}</font>",
+                            cell_text_style,
+                        ),
+                        Paragraph(visits_str, cell_text_style),
+                        Paragraph(ci.commercial_potential_summary, cell_text_style),
+                    ]
+                )
+
+            city_table = Table(city_rows, colWidths=[95, 80, 100, 85, 180])
+            city_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#065F46")),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 1),
+                            (-1, -1),
+                            [colors.white, colors.HexColor("#ECFDF5")],
+                        ),
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#A7F3D0")),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1FAE5")),
+                    ]
+                )
+            )
+            elements.append(city_table)
+            elements.append(Spacer(1, 12))
+
+        # 4. Imagem do Mapa (se fornecida via base64)
         if request.map_image_base64:
             try:
-                # Remove header de data URL se presente
                 b64_clean = request.map_image_base64
                 if "," in b64_clean:
                     b64_clean = b64_clean.split(",", 1)[1]
                 img_data = base64.b64decode(b64_clean)
                 img_buffer = io.BytesIO(img_data)
-                
-                # Largura útil da página letter com margens de 36pt = 612 - 72 = 540pt
+
                 map_img = RLImage(img_buffer, width=540, height=220)
-                elements.append(Paragraph("<b>Visualização da Rota Otimizada no Mapa:</b>", subtitle_style))
+                elements.append(
+                    Paragraph(
+                        "<b>Visualização da Rota Otimizada no Mapa:</b>", subtitle_style
+                    )
+                )
                 elements.append(Spacer(1, 4))
                 elements.append(map_img)
                 elements.append(Spacer(1, 12))
             except Exception as e:
                 print(f"[PdfReportService] Erro ao renderizar screenshot do mapa: {e}")
 
-        # 4. Tabela de Sequência de Visitas (Sem expor lat/lon)
-        elements.append(Paragraph("<b>Itinerário Sequencial de Visitas:</b>", subtitle_style))
+        # 5. Tabela de Sequência de Visitas (Sem expor lat/lon — Regra P-105)
+        elements.append(
+            Paragraph("<b>Itinerário Sequencial de Visitas:</b>", subtitle_style)
+        )
         elements.append(Spacer(1, 4))
 
         table_rows = [
@@ -135,14 +232,17 @@ class PdfReportService:
                 Paragraph("<b>Local / Cliente</b>", cell_header_style),
                 Paragraph("<b>Endereço Completo</b>", cell_header_style),
                 Paragraph("<b>Chegada Est.</b>", cell_header_style),
-                Paragraph("<b>Status</b>", cell_header_style)
+                Paragraph("<b>Status</b>", cell_header_style),
             ]
         ]
 
         for s in request.ordered_stops:
-            step_label = "Partida" if s.action == "DEPARTURE" else ("Retorno" if s.action == "RETURN" else f"#{s.step}")
-            
-            # Monta endereço amigável
+            step_label = (
+                "Partida"
+                if s.action == "DEPARTURE"
+                else ("Retorno" if s.action == "RETURN" else f"#{s.step}")
+            )
+
             addr_str = "-"
             if s.address:
                 parts = []
@@ -157,7 +257,25 @@ class PdfReportService:
                     parts.append(s.address.city)
                 addr_str = " - ".join(parts) if parts else (s.address.full_address or "-")
 
-            status_str = "🔒 Ordem Fixa" if s.is_fixed else "⚡ IA Otimizado"
+            name_label = s.name
+            if s.is_suggestion:
+                cat_tag = (
+                    "LOJA NATURAL"
+                    if s.suggestion_category == "PRODUTOS_NATURAIS"
+                    else "FARMÁCIA"
+                )
+                name_label += f"<br/><font size='7' color='#047857'>[SUGESTÃO · {cat_tag}]</font>"
+
+            if s.is_suggestion:
+                detour_info = (
+                    f"+{s.detour_distance_km:.1f} km"
+                    if s.detour_distance_km is not None
+                    else "Oportunidade"
+                )
+                status_str = f"✨ Sugestão IA<br/><font size='7' color='#047857'>({detour_info})</font>"
+            else:
+                status_str = "🔒 Ordem Fixa" if s.is_fixed else "⚡ IA Otimizado"
+
             if s.traffic_condition and s.traffic_condition != "LIVRE":
                 status_str += f"<br/><font color='#b91c1c' size='7'>({s.traffic_condition})</font>"
 
@@ -167,36 +285,63 @@ class PdfReportService:
                 else:
                     arr_time_str = f"<b>{s.estimated_arrival_clock}</b>"
             else:
-                arr_time_str = f"+{s.arrival_time_minutes:.0f} min" if s.arrival_time_minutes > 0 else "0 min"
+                arr_time_str = (
+                    f"+{s.arrival_time_minutes:.0f} min"
+                    if s.arrival_time_minutes > 0
+                    else "0 min"
+                )
 
-            table_rows.append([
-                Paragraph(step_label, cell_bold_style),
-                Paragraph(s.name, cell_bold_style),
-                Paragraph(addr_str, cell_text_style),
-                Paragraph(arr_time_str, cell_text_style),
-                Paragraph(status_str, cell_text_style)
-            ])
+            table_rows.append(
+                [
+                    Paragraph(step_label, cell_bold_style),
+                    Paragraph(name_label, cell_bold_style),
+                    Paragraph(addr_str, cell_text_style),
+                    Paragraph(arr_time_str, cell_text_style),
+                    Paragraph(status_str, cell_text_style),
+                ]
+            )
 
         route_table = Table(table_rows, colWidths=[50, 130, 220, 75, 65])
-        route_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9FAFB')]),
-            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
-            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ]))
+        route_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E3A8A")),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#F9FAFB")],
+                    ),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E5E7EB")),
+                ]
+            )
+        )
         elements.append(route_table)
         elements.append(Spacer(1, 14))
 
-        # 5. Rodapé
+        # 6. Rodapé
         footer_text = "Fitoherb Nordeste | Rua Itaeté, 434 - Pitangueiras, Lauro de Freitas - BA | Tel: (71) 3379-7717 | comercial@fitoherb.com.br"
-        elements.append(Paragraph(footer_text, ParagraphStyle('Footer', parent=styles['Normal'], fontSize=7, textColor=colors.HexColor('#9CA3AF'), alignment=1)))
+        elements.append(
+            Paragraph(
+                footer_text,
+                ParagraphStyle(
+                    "Footer",
+                    parent=styles["Normal"],
+                    fontSize=7,
+                    textColor=colors.HexColor("#9CA3AF"),
+                    alignment=1,
+                ),
+            )
+        )
 
         doc.build(elements)
         buffer.seek(0)
         return buffer.getvalue()
+
 
 pdf_service = PdfReportService()

@@ -52,9 +52,21 @@ class ChatActionDto(BaseModel):
 class ProductSnippetDto(BaseModel):
     name: str
     slug: str
-    image_url: Optional[str] = ""
+    image_url: Optional[str] = None
     category: Optional[str] = ""
     supplier: Optional[str] = ""
+
+
+class CatalogRefreshRequest(BaseModel):
+    reason: Optional[str] = Field(default="MANUAL_REFRESH", max_length=64)
+    sync_run_id: Optional[str] = Field(default=None, max_length=64)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, v: Optional[str]) -> str:
+        if v is None or not v.strip():
+            return "MANUAL_REFRESH"
+        return v.strip()
 
 
 class ChatResponseData(BaseModel):
