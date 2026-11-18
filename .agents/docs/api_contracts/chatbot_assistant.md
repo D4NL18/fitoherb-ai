@@ -159,3 +159,16 @@ Verifica a disponibilidade do subsistema de chat, status de carregamento do índ
 | `400 BAD REQUEST` | Mensagem excede 255 caracteres ou payload malformado | `{"status": "BAD_REQUEST", "message": "Mensagem excede o limite máximo de 255 caracteres."}` |
 | `429 TOO MANY REQUESTS` | Rate limit por IP excedido (> 20 req/min) | `{"status": "TOO_MANY_REQUESTS", "message": "Muitas requisições. Aguarde alguns instantes."}` |
 | `503 SERVICE UNAVAILABLE` | Chat desativado por flag ou indisponibilidade total do catálogo | `{"status": "SERVICE_UNAVAILABLE", "message": "O assistente virtual está temporariamente indisponível."}` |
+
+---
+
+### Adendo Onda 4: `POST /api/v1/chat/catalog/refresh` (Recarga Interna Pós-Sync & Invalidação Cache L1)
+
+**Objetivo:** Endpoint interno autenticado acionado pelo `fitoherb-backend-v2` (pós-commit do sync diário `P-410`, sync manual, CRUD de produto ou conclusão/descarte na curadoria rápida `P-413`) para recarregar `CatalogIndex.load_from_db()` filtrando `WHERE COALESCE(p.active, TRUE) = TRUE`, incrementar `catalog_version` e invalidar `ConversationCacheService` (**0 tokens LLM**, **Scale-to-Zero safe**).
+
+- **Autenticação Obrigatória:** Header `X-Internal-Refresh-Token: <secret>` validado em tempo constante via `hmac.compare_digest` contra `INTERNAL_REFRESH_TOKEN` (fail-closed `503 REFRESH_TOKEN_NOT_CONFIGURED` se ausente no ambiente; `401 MISSING_REFRESH_TOKEN` se header ausente; `403 INVALID_REFRESH_TOKEN` se inválido).
+- **Body Opcional (`CatalogRefreshRequest`):** `{"reason": "DAILY_ERP_SYNC", "sync_run_id": "<uuid>"}` *(proibido enviar PII/e-mails)*.
+- **Sucesso (`200 OK` — Envelope `{data, meta}`):**
+  `{"data": {"refreshed": true, "catalog_items": 1036, "categories_count": 6, "suppliers_count": 44, "cache_cleared": true, "catalog_version": 2, "refreshed_at": "..."}, "meta": {"service": "fitoherb-ai-chat", "trigger_reason": "DAILY_ERP_SYNC", "tokens": {"prompt_tokens": 0, "completion_tokens": 0}}}`
+- **Erro `503 CATALOG_REFRESH_FAILED`:** Falha transitória de PostgreSQL preserva intacto o último snapshot válido em RAM (sem derrubar o chat); TTL passivo `CATALOG_REFRESH_TTL_SECONDS` (`3600s`) garante auto-cura caso o webhook falhe na rede.
+- **Compatibilidade `GET /api/v1/chat/health`:** Adiciona `catalog_version` e `catalog_last_refresh`; `ProductSnippetDto.image_url` admite `None` (`P-412`).

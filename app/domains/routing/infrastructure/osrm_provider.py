@@ -7,6 +7,7 @@ import urllib.parse
 from typing import List, Tuple, Dict, Any, Optional
 from app.core.config import settings
 
+
 class GeoCache:
     def __init__(self, db_path: str = "osrm_cache.db"):
         self.db_path = db_path
@@ -29,6 +30,20 @@ class GeoCache:
                         geojson TEXT,
                         duration REAL,
                         distance REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS city_insights_cache (
+                        city_key TEXT PRIMARY KEY,
+                        payload TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS poi_discovery_cache (
+                        corridor_key TEXT PRIMARY KEY,
+                        payload TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -92,7 +107,55 @@ class GeoCache:
         except Exception:
             pass
 
+    def get_city_insight(self, city_key: str) -> Optional[Dict[str, Any]]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT payload FROM city_insights_cache WHERE city_key = ?", (city_key,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    return json.loads(row[0])
+        except Exception:
+            pass
+        return None
+
+    def set_city_insight(self, city_key: str, data: Dict[str, Any]) -> None:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO city_insights_cache (city_key, payload) VALUES (?, ?)",
+                    (city_key, json.dumps(data, ensure_ascii=False))
+                )
+        except Exception:
+            pass
+
+    def get_poi_candidates(self, corridor_key: str) -> Optional[List[Dict[str, Any]]]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT payload FROM poi_discovery_cache WHERE corridor_key = ?", (corridor_key,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    data = json.loads(row[0])
+                    if isinstance(data, list):
+                        return data
+        except Exception:
+            pass
+        return None
+
+    def set_poi_candidates(self, corridor_key: str, data: List[Dict[str, Any]]) -> None:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO poi_discovery_cache (corridor_key, payload) VALUES (?, ?)",
+                    (corridor_key, json.dumps(data, ensure_ascii=False))
+                )
+        except Exception:
+            pass
+
+
 geo_cache = GeoCache()
+
 
 class OSRMProvider:
     BASE_URL = settings.OSRM_BASE_URL
@@ -119,7 +182,7 @@ class OSRMProvider:
 
         try:
             req = urllib.request.Request(
-                url, 
+                url,
                 headers={"User-Agent": "Fitoherb-AI-Routing/1.0 (Logistics Optimization; Commercial)"}
             )
             with urllib.request.urlopen(req, timeout=settings.OSRM_TIMEOUT_SECONDS) as response:
@@ -184,7 +247,7 @@ class OSRMProvider:
 
         try:
             req = urllib.request.Request(
-                url, 
+                url,
                 headers={"User-Agent": "Fitoherb-AI-Routing/1.0 (Logistics Optimization; Commercial)"}
             )
             with urllib.request.urlopen(req, timeout=settings.OSRM_TIMEOUT_SECONDS) as response:
@@ -211,7 +274,6 @@ class OSRMProvider:
                                     else:
                                         leg_coords.extend(c)
 
-                            # Fallback de segurança se os steps não contiverem geometria
                             if not leg_coords and leg_idx < len(waypoints) - 1:
                                 p1 = waypoints[leg_idx]
                                 p2 = waypoints[leg_idx + 1]
@@ -279,5 +341,6 @@ class OSRMProvider:
         }
         geo_cache.set_polyline(waypoints, fallback_geojson, 0, 0)
         return fallback_geojson
+
 
 osrm_provider = OSRMProvider()

@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
+
 class Address(BaseModel):
     street: Optional[str] = Field(None, description="Logradouro / Rua")
     number: Optional[str] = Field(None, description="Número")
@@ -10,6 +11,7 @@ class Address(BaseModel):
     postal_code: Optional[str] = Field(None, description="CEP")
     full_address: Optional[str] = Field(None, description="Endereço formatado legível")
 
+
 class LocationPoint(BaseModel):
     id: str = Field(..., description="Identificador único")
     name: str = Field(..., description="Nome do estabelecimento ou base")
@@ -17,20 +19,37 @@ class LocationPoint(BaseModel):
     lon: float = Field(..., description="Longitude")
     address: Optional[Address] = Field(default=None, description="Dados do endereço legível")
 
+
 class DeliveryStop(LocationPoint):
     priority: str = Field("REGULAR", description="CRITICAL, HIGH ou REGULAR")
     fixed_order: Optional[int] = Field(
-        None, 
-        ge=1, 
-        description="Posição fixa desejada na sequência da rota (1-indexed: 1 para 1ª parada, etc.)"
+        None,
+        ge=1,
+        description="Posição fixa desejada na sequência da rota (1-indexed: 1 para 1ª parada, etc.)",
     )
     demand: float = Field(10.0, description="Demanda/Carga estimada (neutro)")
     service_duration_minutes: Optional[int] = Field(
-        None, 
-        ge=0, 
-        description="Tempo de atendimento no cliente em minutos (dwell time)"
+        None,
+        ge=0,
+        description="Tempo de atendimento no cliente em minutos (dwell time)",
     )
     target_arrival_time: Optional[str] = Field(
         None,
-        description="Horário específico marcado para chegada (formato HH:MM)"
+        description="Horário específico marcado para chegada (formato HH:MM)",
+    )
+    is_suggestion: bool = Field(
+        False,
+        description="Indica se o ponto é uma sugestão proativa da IA (P-108)",
+    )
+    suggestion_category: Optional[str] = Field(
+        None,
+        description="Categoria comercial da sugestão: FARMACIA ou PRODUTOS_NATURAIS",
+    )
+    detour_distance_km: Optional[float] = Field(
+        None,
+        description="Desvio viário estimado em km para incluir a sugestão",
+    )
+    detour_time_minutes: Optional[float] = Field(
+        None,
+        description="Tempo adicional estimado do desvio em minutos",
     )

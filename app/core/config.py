@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     GA_CROSSOVER_RATE: float = 0.85
     GA_ELITISM_COUNT: int = 2
 
+    # Catalog refresh TTL (auto-cura passiva Scale-to-Zero)
+    CATALOG_REFRESH_TTL_SECONDS: int = 3600
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="allow")
 
 settings = Settings()

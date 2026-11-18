@@ -96,7 +96,7 @@ class ChatOrchestrator:
                     ProductSnippetDto(
                         name=p.get("name", ""),
                         slug=p.get("slug", ""),
-                        image_url=p.get("image_url", ""),
+                        image_url=p.get("image_url"),
                         category=p.get("category", ""),
                         supplier=p.get("supplier", "")
                     )
@@ -161,12 +161,21 @@ class ChatOrchestrator:
                 meta={"cache": "STATIC_KB", "tokens": {"prompt_tokens": 0, "completion_tokens": 0}}
             )
 
-        # 5. Cache L1 (P-310)
-        cached = ConversationCacheService.get(user_text)
+        # 5. Auto-cura TTL passivo + Cache L1 isolado por catalog_version (P-310)
+        if self.catalog_index.ensure_fresh():
+            new_version = ConversationCacheService.bump_catalog_version()
+            self.catalog_index.set_catalog_version(new_version)
+        catalog_version = ConversationCacheService.get_catalog_version()
+
+        cached = ConversationCacheService.get(user_text, catalog_version=catalog_version)
         if cached:
             return ChatResponse(
                 data=ChatResponseData(**cached),
-                meta={"cache": "HIT", "tokens": {"prompt_tokens": 0, "completion_tokens": 0}}
+                meta={
+                    "cache": "HIT",
+                    "catalog_version": catalog_version,
+                    "tokens": {"prompt_tokens": 0, "completion_tokens": 0}
+                }
             )
 
         # 6. Compactação Automática de Histórico (P-307)
@@ -230,7 +239,7 @@ class ChatOrchestrator:
                             ProductSnippetDto(
                                 name=p.get("name", ""),
                                 slug=p.get("slug", ""),
-                                image_url=p.get("image_url", ""),
+                                image_url=p.get("image_url"),
                                 category=p.get("category", ""),
                                 supplier=p.get("supplier", "")
                             )
@@ -262,13 +271,18 @@ class ChatOrchestrator:
             suggestions=["O que é a Fitoherb?", "Onde fica a distribuidora?", "Falar com o comercial"]
         )
 
-        # Salva no cache L1
-        ConversationCacheService.set(user_text, response_data.model_dump())
+        # Salva no cache L1 vinculado a catalog_version capturada no inicio da requisicao
+        ConversationCacheService.set(
+            user_text,
+            response_data.model_dump(),
+            catalog_version=catalog_version
+        )
 
         return ChatResponse(
             data=response_data,
             meta={
                 "cache": "MISS",
+                "catalog_version": catalog_version,
                 "model": getattr(self.gemini_client, "model_name", "local-fallback"),
                 "tokens": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens}
             }
