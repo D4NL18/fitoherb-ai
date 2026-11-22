@@ -413,3 +413,9 @@ async def endpoint_post(tema: str, rede_social: str = "instagram"):
 - [ ] Geração de código com `temperature ≤ 0.3` para consistência
 - [ ] Endpoints FastAPI com validação Pydantic e tratamento de HTTPException
 - [ ] Custo estimado por chamada documentado no README do projeto
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `examples/fastapi_genai_service.py`: Serviço FastAPI assíncrono integrando geração de texto e imagem com validação Pydantic v2, limites de payload, timeout explícito e tratamento padronizado de erros.

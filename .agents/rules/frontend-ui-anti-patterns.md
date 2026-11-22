@@ -1,11 +1,7 @@
 ---
 description: "Regras de interface, componentes Angular, SCSS e prevencao de UI Anti-Patterns: filtro Hallmark Anti-IA Slop."
 trigger: glob
-globs:
-  - "**/*.html"
-  - "**/*.scss"
-  - "**/*.css"
-  - "**/*.ts"
+globs: "**/*.html, **/*.scss, **/*.css, **/*.ts"
 ---
 
 # UI/UX Anti-Patterns (Filtro Anti-Slop Genérico)

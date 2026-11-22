@@ -1,0 +1,114 @@
+{
+  "description": "Configuração de referência para N8N atuando como Servidor MCP (MCP Server Trigger) e como Cliente MCP (AI Agent + MCP Client Tool).",
+  "mcp_server_workflow_snippet": {
+    "name": "N8N MCP Server - CRM Tools",
+    "nodes": [
+      {
+        "parameters": {
+          "path": "mcp-crm-server",
+          "authentication": "bearerAuth"
+        },
+        "id": "3a2b3c4d-0001-4000-8000-000000000001",
+        "name": "MCP Server Trigger",
+        "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "typeVersion": 1,
+        "position": [220, 260],
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "MCP_SERVER_BEARER_CREDENTIAL_ID",
+            "name": "MCP Server Bearer Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "name": "criar_lead_crm",
+          "description": "Cria um novo lead no CRM com nome, e-mail corporativo e telefone opcional.",
+          "workflowId": {
+            "__rl": true,
+            "value": "CRM_CREATE_LEAD_WORKFLOW_ID",
+            "mode": "id"
+          }
+        },
+        "id": "3a2b3c4d-0002-4000-8000-000000000002",
+        "name": "Tool Criar Lead CRM",
+        "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "typeVersion": 2,
+        "position": [220, 480]
+      }
+    ],
+    "connections": {
+      "Tool Criar Lead CRM": {
+        "ai_tool": [
+          [
+            {
+              "node": "MCP Server Trigger",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "mcp_client_workflow_snippet": {
+    "name": "N8N AI Agent consuming External MCP Server",
+    "nodes": [
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.body.message }}"
+        },
+        "id": "3a2b3c4d-0003-4000-8000-000000000003",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [460, 260]
+      },
+      {
+        "parameters": {
+          "sseEndpoint": "https://n8n.seudominio.com/mcp/mcp-crm-server/sse",
+          "authentication": "bearerAuth",
+          "include": "selected",
+          "includeTools": [
+            "criar_lead_crm"
+          ]
+        },
+        "id": "3a2b3c4d-0004-4000-8000-000000000004",
+        "name": "MCP Client Tool",
+        "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+        "typeVersion": 1,
+        "position": [460, 480],
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "MCP_CLIENT_BEARER_CREDENTIAL_ID",
+            "name": "External MCP Bearer Token"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "MCP Client Tool": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "external_client_example": {
+    "mcpServers": {
+      "n8n-crm": {
+        "url": "https://n8n.seudominio.com/mcp/mcp-crm-server/sse",
+        "headers": {
+          "Authorization": "Bearer ${N8N_MCP_BEARER_TOKEN}"
+        }
+      }
+    }
+  }
+}

@@ -1,11 +1,7 @@
 ---
 description: "Regras de interface, componentes Angular, SCSS e prevencao de UI Anti-Patterns: otimizacao de assets, imagens e midia."
 trigger: glob
-globs:
-  - "**/*.html"
-  - "**/*.scss"
-  - "**/*.css"
-  - "**/*.ts"
+globs: "**/*.html, **/*.scss, **/*.css, **/*.ts"
 ---
 
 # Regras de Otimização de Assets e Mídia 🖼️

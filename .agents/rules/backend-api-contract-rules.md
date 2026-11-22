@@ -1,12 +1,7 @@
 ---
 description: "Regras de arquitetura e implementacao backend: padroes rigidos de contrato de API REST com envelope data/meta."
 trigger: glob
-globs:
-  - "**/*.java"
-  - "**/*.py"
-  - "**/pom.xml"
-  - "**/requirements.txt"
-  - "**/pyproject.toml"
+globs: "**/*.java, **/*.py, **/pom.xml, **/requirements.txt, **/pyproject.toml"
 ---
 
 # Padrões de Contrato de API (REST) 🔌

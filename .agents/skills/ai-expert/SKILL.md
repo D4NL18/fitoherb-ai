@@ -141,3 +141,43 @@ A otimização de tokens afeta diretamente o Custo dos Serviços Vendidos (CPV) 
   - Estratégia de **Condensação Progressiva:** Quando a soma dos tokens do histórico atingir o limiar de alerta (`MAX_HISTORY_TOKENS`), invocar uma rotina assíncrona para resumir as primeiras $K$ interações em um bloco de `[Resumo do Contexto Anterior]`, mantendo intactas apenas as últimas 2 ou 3 rodadas completas (User/Assistant).
 - **System Prompt Caching:** Aproveitamento de Prompt Caching (Anthropic / OpenAI / Gemini) posicionando regras imutáveis de sistema e schemas de ferramentas no topo fixo da chamada.
 
+---
+
+## Agentes Autônomos com LLM: Arquitetura, Memória, Planejamento e Segurança (Módulo 1 — Pós IA para Devs)
+
+### Níveis de Inteligência de Agentes Pessoais (L1–L5)
+| Nível | Descrição | Capacidades Associadas |
+| :--- | :--- | :--- |
+| **L1** | Passo simples seguindo | Execução direta de etapas |
+| **L2** | Automação Determinística de Tarefas | Formulação e execução de etapas estruturadas |
+| **L3** | Automação Estratégica de Tarefas | Planejamento, Reflexão e Descoberta de necessidades |
+| **L4** | Memória e Consciência do Contexto | Decisão profissional contextualizada |
+| **L5** | Personagem Digital | Criatividade, adaptabilidade e inteligência emocional |
+
+### Arquitetura Cognitiva de Agentes LLM
+Um agente autônomo completo combina 3 pilares além do LLM:
+1. **Planning (Planejamento e Raciocínio):**
+   - **CoT (Chain of Thought):** Decomposição passo a passo para raciocínio lógico e matemático.
+   - **ToT (Tree of Thoughts):** Exploração de múltiplas ramificações com avaliação e rollback.
+   - **LLM+P:** Delegação do planejamento formal para um planejador externo (ex.: PDDL).
+   - **ReAct (Reason + Act):** Intercala `Thought -> Action (Tool) -> Observation` até convergir na resposta final.
+   - **Autorreflexão & Chain of Hindsight (CoH):** Refinamento iterativo baseado em autocrítica e histórico de tentativas anteriores.
+2. **Memory (Taxonomia de Memórias):**
+   - **Sensory Memory:** Entradas multimodais brutas (visual, auditiva, tátil/embeddings de entrada).
+   - **Short-term / Working Memory:** Contexto ativo da janela do prompt.
+   - **Long-term Memory:** *Explícita/Declarativa* (Episódica: eventos; Semântica: fatos/conceitos via Vector DB) e *Implícita/Procedural* (skills, código e pesos). Em agentes generativos (Park et al.), a recuperação combina **relevância**, **recenticidade** e **importância**.
+3. **Tools & Orchestration:**
+   - **Prompt Chains & Routers:** Decomposição de instruções complexas em *Sequential Prompt Chains* e roteamento dinâmico via **Embedding Router** (similaridade vetorial) ou **LLM Router** (classificação estruturada).
+   - **Padrões de Uso de Ferramentas:** **MRKL** (raciocínio modular + especialistas), **TALM / Toolformer** (auto-aprendizado de chamadas de API) e **HuggingGPT** (LLM atuando como controlador em 4 fases: *Task Planning → Model Selection → Task Execution → Response Generation*).
+
+### Arquiteturas Defensivas e Segurança para Agentes LLM
+- **Arquitetura Dual LLM (Isolamento de Privilégios contra Prompt Injection):**
+  - **Privileged LLM:** Recebe instruções confiáveis do sistema/usuário e tem permissão para acionar ferramentas e armazenamento externo.
+  - **Quarantined LLM:** Processa conteúdo externo não-confiável (e-mails, páginas web, anexos) **sem acesso a ferramentas**.
+  - *Atenção:* Em cadeias complexas, evite que a saída não sanitizada do *Quarantined LLM* seja injetada diretamente como instrução no *Privileged LLM*.
+- **Padrão SMART Bot (Guardrails de Entrada e Saída):** Camada dedicada de *Prompt & Output Check* (verificação de viés, consultas impróprias, vazamento e alucinações) antes e depois da execução do agente.
+- **Compliance em Fluxos Cloud (ex.: Azure OpenAI):** Diferenciar fluxos de *Inference* (content filtering síncrono + monitoramento assíncrono com retenção geo-específica) e *Finetuning* (armazenamento dedicado duplamente criptografado), validando requisitos de privacidade/LGPD.
+
+### Referência Complementar (Carregar sob Demanda)
+- `references/autonomous-agents-and-security.md` — Detalhamento da arquitetura Transformer, Níveis L1–L5, taxonomia de memórias, CoT/ToT/LLM+P/ReAct/CoH/MRKL/HuggingGPT/AutoGPT, estudos de caso (ChemCrow, Park et al.) e arquiteturas defensivas Dual LLM / SMART Bot.
+

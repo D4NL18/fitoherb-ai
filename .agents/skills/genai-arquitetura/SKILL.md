@@ -380,3 +380,9 @@ augmentation = transforms.Compose([
 - [ ] Checkpoints salvos a cada N épocas
 - [ ] Métricas FID (Fréchet Inception Distance) calculadas para avaliar qualidade
 - [ ] Mode collapse monitorado: diversidade nas amostras geradas
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `references/generative-architectures-comparison.md`: Comparativo técnico detalhado entre GANs, VAEs, Diffusion Models e Transformers (funcionamento, espaço latente, estabilidade de treino, casos de uso e guia de trade-offs).

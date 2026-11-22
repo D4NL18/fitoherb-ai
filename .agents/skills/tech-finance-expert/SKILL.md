@@ -115,3 +115,9 @@ $$\text{TCO} = \text{Custo de Aquisição/Dev} + \text{Infraestrutura/Cloud} + \
 - [ ] Análise de TCO com ciclo de vida mínimo de 3 anos (incluindo custos de manutenção e nuvem).
 - [ ] Alinhamento com a meta de Unit Economics (LTV/CAC >= 3.0x e CAC Payback <= 12 meses).
 - [ ] Revisão sob ótica de Orçamento Base Zero (OBZ) para eliminar licenças zumbis e instâncias ociosas.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- `references/dre-capex-opex-unit-economics.md` — Guia aprofundado de DRE aplicada à tecnologia, EBITDA, Caixa vs Lucro, Capex vs Opex, Orçamento Base Zero (OBZ), TCO de 3 anos e benchmarks de Unit Economics (LTV/CAC, CAC Payback, NRR, Rule of 40).
+- `examples/viability_calculator.py` — Script Python pronto para uso que calcula VPL (NPV), TIR (IRR), Payback Simples/Descontado, TCO e Unit Economics (LTV, LTV/CAC e CAC Payback).

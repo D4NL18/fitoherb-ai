@@ -298,3 +298,9 @@ for idx, doc, score in resultados:
 - [ ] Modelo salvo em arquivo após treinamento (não re-treinar sempre)
 - [ ] Tamanho do vocabulário verificado com `len(modelo.wv.key_to_index)`
 - [ ] Analogias testadas para validar qualidade do embedding treinado
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- [`examples/word2vec_similarity_ptbr.py`](examples/word2vec_similarity_ptbr.py): Treinamento Word2Vec (CBOW e Skip-gram) com Gensim em PT-BR, similaridade cosseno entre palavras e documentos, analogias vetoriais e tratamento de OOV com fallback seguro e FastText.

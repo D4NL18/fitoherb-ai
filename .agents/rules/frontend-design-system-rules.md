@@ -1,11 +1,7 @@
 ---
 description: "Regras de interface, componentes Angular, SCSS e prevencao de UI Anti-Patterns: governanca de Design System e Design Plans."
 trigger: glob
-globs:
-  - "**/*.html"
-  - "**/*.scss"
-  - "**/*.css"
-  - "**/*.ts"
+globs: "**/*.html, **/*.scss, **/*.css, **/*.ts"
 ---
 
 # Regras de Governança de Design System & Design Plans 🎨📏
