@@ -255,3 +255,40 @@ def ingest_chunks_to_pinecone(chunks, embeddings_model, tenant_id: str):
 | **DB Persistent Memory** | Salva mensagens em Postgres/Supabase e carrega dinamicamente sob demanda. | Persistência eterna entre sessões; auditável para conformidade LGPD e analytics. | Requer camada de I/O em banco relacional e paginação manual. | Aplicações SaaS corporativas e contas de usuário autenticadas. |
 | **Semantic Vector Memory** | Mensagens passadas são vetorizadas e recuperadas via busca semântica por similaridade. | Traz memórias relevantes mesmo ocorridas há semanas, sem gastar tokens com o diálogo intermediário. | Requer banco vetorial; pode trazer contexto fora de ordem cronológica. | Agentes com personas persistentes de longo prazo (mentores, copilotos pessoais). |
 
+---
+
+## Arquitetura RAG Avançada: FAISS, Retrieval Inteligente, Cache e Observabilidade (Módulos 3 e 5 — Pós IA para Devs)
+
+### Índices Vetoriais (FAISS) e Estratégias de Retrieval
+- **FAISS (Facebook AI Similarity Search):**
+  - **IVF (Inverted File Index):** Particiona vetores em clusters para buscar apenas nos centróides mais próximos (ganho de escala).
+  - **HNSW (Hierarchical Navigable Small World):** Grafo hierárquico de baixíssima latência para busca aproximada (ANN).
+  - **Quantização:** Reduz memória RAM em grandes índices com perda controlada de recall.
+- **Modos de Retrieval:**
+  - **Dense Retrieval:** Busca semântica por proximidade vetorial (sinônimos e paráfrases).
+  - **Sparse Retrieval (BM25):** Busca léxica exata (códigos, siglas, termos jurídicos/técnicos).
+  - **Hybrid Retrieval:** Combina Dense + Sparse com pesos ajustáveis.
+  - **MMR (Maximum Marginal Relevance):** Equilibra relevância e diversidade (`search_type="mmr"`) para evitar chunks redundantes.
+  - **Multi-Vector Retrieval:** Múltiplos vetores por documento (resumo, perguntas hipotéticas, definição).
+- **Variantes Avançadas de RAG:** Query Expansion / Multi-Query / **HyDE**, Contextual Compression, Conversational RAG, Tool-former RAG e **Reranking (cross-encoder)** quando `top-k > 5`.
+
+### Padrões de Produção: Adaptive Retrieval, Cache de Embeddings e Semantic Chunking
+1. **Adaptive Retrieval:** Ajusta `k`, `fetch_k` e `score_threshold` conforme a natureza da pergunta (`factual`: precisão alta, `k=3`, threshold >= 0.8; `analytical`: cobertura ampla, `k=8`, `fetch_k=30`).
+2. **SmartEmbeddingCache (Deduplicação LFU por Hash):** Evita recomputar embeddings de queries/trechos repetidos usando hash do texto (preferencialmente `sha256`) com política de despejo dos menos utilizados (`max_size`).
+3. **Semantic Chunking:** Agrupa sentenças respeitando a coerência semântica entre sentenças consecutivas em vez de cortar arbitrariamente no meio de uma ideia.
+
+### Avaliação (`RAGEvaluator`) e Monitoramento em Tempo Real (`RAGMonitor`)
+- **Métricas de Retrieval:** `Precision@k`, `Recall@k`, `F1`, `MRR` e `NDCG` comparando `retrieved_ids` vs `relevant_ids`.
+- **Métricas de Geração:** `ROUGE-1/2/L`, *Groundedness/Faithfulness*, acurácia factual e coerência.
+- **Detecção de Anomalias em Produção (`RAGMonitor`):** Logue por consulta `retrieval_time`, `generation_time`, `confidence_score` e `num_documents_retrieved`, disparando alertas automáticos quando:
+  - `confidence_score < 0.3` (baixa confiança / risco de alucinação);
+  - `retrieval_time > 5.0s` (degradação do índice vetorial);
+  - `num_documents_retrieved == 0` (falha de cobertura ou filtro excessivo).
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- **Exemplo End-to-End (Ingestão + Sanitização LGPD + ChromaDB/FAISS + LCEL Blindado + Citações):** `examples/rag_lgpd_end_to_end.py`
+- **Referência Técnica (Comparativo de Vector DBs, Estratégias de Retrieval, Ragas/ROUGE e Alertas `RAGMonitor`):** `references/vector-dbs-and-metrics.md`
+

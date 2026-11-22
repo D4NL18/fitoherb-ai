@@ -1,11 +1,7 @@
 ---
 description: "Regras de interface, componentes Angular, SCSS e prevencao de UI Anti-Patterns: gerenciamento de estado (Signals, stores)."
 trigger: glob
-globs:
-  - "**/*.html"
-  - "**/*.scss"
-  - "**/*.css"
-  - "**/*.ts"
+globs: "**/*.html, **/*.scss, **/*.css, **/*.ts"
 ---
 
 # Regras de Gerenciamento de Estado (Frontend) ⚛️

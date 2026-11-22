@@ -99,3 +99,10 @@ Em caso de confirmação ou suspeita de vazamento de dados pessoais:
 - [ ] Privacy by Default garantido: permissões adicionais exigem opt-in deliberado do usuário.
 - [ ] RIPD formalizado em `.agents/docs/business_rules/` caso envolva dados sensíveis ou decisões automatizadas.
 - [ ] Endpoints e procedimentos de exclusão/anonimização de dados implementados para atendimento ao titular.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `references/lgpd-legal-bases-and-anpd.md` — Referência detalhada dos 7 Princípios de Privacy by Design/Default, classificação de Dados Pessoais vs. Sensíveis, 10 Bases Legais (Art. 7º e Art. 11), Direitos do Titular (Art. 18 e Art. 20) e Playbook de Gestão de Incidentes ANPD (Resolução CD/ANPD nº 15/2024).
+- `examples/ripd-dpia-template.md` — Template prático e pronto para preenchimento de Relatório de Impacto à Proteção de Dados Pessoais (RIPD / DPIA).

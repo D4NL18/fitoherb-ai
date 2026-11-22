@@ -140,3 +140,9 @@ gcloud ai custom-jobs create \
   - Motor de busca por similaridade vetorial distribuído de ultra baixa latência (< 5ms no percentil 99) baseado no algoritmo ScaNN (Score-Aware Loss for Nearest Neighbor Search).
   - Ideal para aplicações RAG de larga escala com centenas de milhões de embeddings e filtragem de restrições por tenant/categoria em nível de índice.
 
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `references/gcp-ml-finops-playbook.md`: Playbook prático de FinOps para ML e IA no GCP comparando Vertex AI, BigQuery ML e Cloud Run Scale-to-Zero, política `gcs_lifecycle.json`, tokenomics e critérios do FinOps Scorecard (>= 4.80).
+

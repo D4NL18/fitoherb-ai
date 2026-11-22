@@ -1,4 +1,4 @@
----
+﻿---
 name: framework-migration-legacy-modernize
 description: "Use quando a tarefa envolver: Orchestrate a comprehensive legacy system modernization using the strangler fig pattern, enabling gradual replacement of outdated components while maintaining continuous business operations through ex"
 risk: critical
@@ -37,14 +37,14 @@ Orchestrate a comprehensive legacy system modernization using the strangler fig 
 - Expected output: Detailed assessment report with risk matrix and modernization priorities
 
 ### 2. Dependency and Integration Mapping
-- Use Task tool with subagent_type="architect-review"
+- Use Task tool with subagent_type="architecture-patterns"
 - Prompt: "Based on the legacy assessment report, create a comprehensive dependency graph showing: internal module dependencies, external service integrations, shared database schemas, and cross-system data flows. Identify integration points that will require facade patterns or adapter layers during migration. Highlight circular dependencies and tight coupling that need resolution."
 - Context from previous: Legacy assessment report, component complexity scores
 - Expected output: Visual dependency map and integration point catalog
 
 ### 3. Business Impact and Risk Assessment
 - Use Task tool with subagent_type="business-analytics::business-analyst"
-- Prompt: "Evaluate business impact of modernizing each component identified. Create risk assessment matrix considering: business criticality (revenue impact), user traffic patterns, data sensitivity, regulatory requirements, and fallback complexity. Prioritize components using a weighted scoring system: (Business Value × 0.4) + (Technical Risk × 0.3) + (Quick Win Potential × 0.3). Define rollback strategies for each component."
+- Prompt: "Evaluate business impact of modernizing each component identified. Create risk assessment matrix considering: business criticality (revenue impact), user traffic patterns, data sensitivity, regulatory requirements, and fallback complexity. Prioritize components using a weighted scoring system: (Business Value Ã— 0.4) + (Technical Risk Ã— 0.3) + (Quick Win Potential Ã— 0.3). Define rollback strategies for each component."
 - Context from previous: Component inventory, dependency mapping
 - Expected output: Prioritized migration roadmap with risk mitigation strategies
 
@@ -96,7 +96,7 @@ Orchestrate a comprehensive legacy system modernization using the strangler fig 
 
 ### 2. Progressive Rollout and Monitoring
 - Use Task tool with subagent_type="deployment-strategies::deployment-engineer"
-- Prompt: "Implement progressive rollout strategy using feature flags. Start with 5% traffic to modernized components, monitor error rates, latency, and business metrics. Define automatic rollback triggers: error rate >1%, latency >2x baseline, or business metric degradation. Create runbook for traffic shifting: 5% → 25% → 50% → 100% with 24-hour observation periods."
+- Prompt: "Implement progressive rollout strategy using feature flags. Start with 5% traffic to modernized components, monitor error rates, latency, and business metrics. Define automatic rollback triggers: error rate >1%, latency >2x baseline, or business metric degradation. Create runbook for traffic shifting: 5% â†’ 25% â†’ 50% â†’ 100% with 24-hour observation periods."
 - Context from previous: Feature flag configuration, monitoring dashboard
 - Expected output: Rollout plan with automated safeguards
 
@@ -144,3 +144,4 @@ Target: $ARGUMENTS
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+

@@ -87,3 +87,10 @@ Classifique todo sistema de IA de acordo com a taxonomia de risco regulatório:
 - [ ] Filtro sanitizador de PII ativo antes de requisições a modelos de linguagem externos.
 - [ ] Enquadramento formal na categoria de risco regulatório do EU AI Act / PL 2338 documentado.
 - [ ] Human-in-the-loop implementado como trava de segurança em ações irreversíveis ou críticas.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `references/wef-eu-ai-act-pl2338.md` — Referência aprofundada do WEF Responsible AI Playbook 2025, matriz comparativa de risco do EU AI Act e PL 2338/2023 brasileiro, métricas e mitigação de viés (Fairness), explicabilidade (XAI/SHAP/LIME) e privacidade em LLMs e RAG.
+- `examples/ai-red-teaming-checklist.md` — Checklist operacional de Red Teaming ético e auditoria de modelos de IA (ML clássico, LLMs, RAG e Agentes Autônomos).

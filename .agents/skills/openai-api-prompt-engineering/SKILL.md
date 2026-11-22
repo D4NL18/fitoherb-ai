@@ -310,3 +310,49 @@ print(recomendar_produtos(perfil))
 - [ ] `temperature` alta (0.8-1.2) para tarefas criativas
 - [ ] Templates testados com inputs extremos (strings muito longas, caracteres especiais)
 - [ ] Saída JSON validada com `json.loads()` e tratamento de `JSONDecodeError`
+
+---
+
+## Avaliação Quantitativa, Otimização Iterativa e A/B Testing de Prompts (Módulo 2 — Pós IA para Devs)
+
+### Ciclo Iterativo e Teorema *No Free Lunch*
+- **Ciclo de Otimização:** `Ideia -> Implementação -> Resultado Experimental -> Análise de Erros -> Ideia`.
+- **Teorema *No Free Lunch* (Wolpert & Macready):** Não existe um prompt ou algoritmo universal ótimo para todos os problemas; avalie variações de forma justa sobre benchmarks representativos do seu domínio específico.
+- **Estrutura de Prompt Efetivo:** Sempre especifique **Persona**, **Público-alvo**, **Contexto**, **Instrução clara**, **Input delimitado**, **Formato de saída** e **Exemplos** (zero-shot, one-shot ou few-shot), evitando sobrecarga de instruções conflitantes.
+
+### Métricas Quantitativas de Avaliação
+1. **Precisão, Recall e F1-Score:** Ideais para tarefas de extração de fatos, classificação e verificação de propriedades esperadas:
+   - $\text{Precisão} = \frac{VP}{VP + FP}$, $\text{Recall} = \frac{VP}{VP + FN}$, $\text{F1} = 2 \cdot \frac{\text{Precisão} \cdot \text{Recall}}{\text{Precisão} + \text{Recall}}$.
+2. **Perplexidade (Perplexity):** Mede a incerteza de um modelo de linguagem ao processar uma sequência ($\text{PPL} = 2^{-\frac{1}{N}\sum \log_2 P(w_i)}$). Valores menores indicam prompts/textos menos ambíguos para o modelo:
+```python
+import torch
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+
+def calcular_perplexidade(texto: str) -> float:
+    inputs = tokenizer(texto, return_tensors="pt")
+    with torch.no_grad():
+        loss = model(**inputs, labels=inputs["input_ids"]).loss
+    return torch.exp(loss).item()
+```
+3. **BLEU Score (Bilingual Evaluation Understudy):** Compara n-grams do texto gerado com referências humanas (0 a 1):
+```python
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+
+def calcular_bleu(referencia: str, candidato: str) -> float:
+    smoothie = SmoothingFunction().method4
+    return sentence_bleu([referencia.split()], candidato.split(), smoothing_function=smoothie)
+```
+4. **ROUGE (ROUGE-1, ROUGE-2, ROUGE-L):** Avalia sumarização medindo sobreposição de unigrams, bigrams e subsequência comum mais longa contra resumos de referência.
+
+### A/B Testing e Feedback em Produção
+- **Experimentação Controlada (A/B Testing de Prompts):** Divida tráfego aleatoriamente entre Prompt A e Prompt B comparando 3 eixos:
+  1. **Eficiência:** Latência e consumo de tokens.
+  2. **Manutenção de Contexto:** Consistência em diálogos multi-turno.
+  3. **Precisão:** Exatidão factual e aderência ao formato.
+- **Feedback Qualitativo + Quantitativo:** Combine notas (1–5) com análise de sentimentos e modelagem de tópicos (ex.: **LDA — Latent Dirichlet Allocation**) sobre comentários dos usuários para priorizar refinamentos de prompt.
+
+### Referência Complementar (Carregar sob Demanda)
+- `references/prompt-evaluation-and-ab-testing.md` — Scripts completos de Perplexidade (PyTorch/GPT-2), BLEU (NLTK), ROUGE, exemplo calculado de Precisão/Recall/F1, protocolo de A/B Testing e análise de feedback.

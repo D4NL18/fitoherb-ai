@@ -316,3 +316,11 @@ Antes de publicar um sistema multi-agente em produção, valide:
 - [ ] Testado com cenários de falha parcial (um sub-agente offline)
 - [ ] Custo de tokens estimado por chamada completa documentado
 - [ ] Documentação do fluxo atualizada em `.agents/docs/`
+
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `examples/supervisor_multi_agent_workflow.json` — Template JSON enxuto de orquestrador supervisor no N8N com classificação de intenção via LLM, roteamento por `Switch` e invocação de sub-workflows via `HTTP Request` e `Execute Workflow`.
+- `references/anti-patterns-and-routing.md` — Guia de referência com matriz comparativa de estratégias de roteamento (Switch, Tool Calling, Paralelismo, Cascata), catálogo de anti-padrões com mitigações e contrato mínimo entre supervisor e sub-agentes.

@@ -198,3 +198,10 @@ CREATE INDEX idx_n8n_chat_session ON n8n_chat_histories(session_id);
 | **Anti-Prompt Injection** | Prompt de resposta instrui o modelo a ignorar instruções vindas do contexto recuperado | [ ] |
 | **Persistência de Sessão** | `session_id` único e propagado em todas as consultas de memória | [ ] |
 | **Limpeza de Histórico** | Mecanismo de TTL ou limite de registros configurado no banco relacional | [ ] |
+
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `examples/rag_pinecone_postgres_workflow.json` — Template JSON enxuto e pronto para importação no N8N implementando o fluxo `Webhook Trigger → AI Agent → Pinecone Vector Store + Postgres Chat Memory → Respond to Webhook`, com isolamento multi-tenant por `namespace` e proteção contra Indirect Prompt Injection.

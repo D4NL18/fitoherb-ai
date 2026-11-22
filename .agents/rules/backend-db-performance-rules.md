@@ -1,12 +1,7 @@
 ---
 description: "Regras de arquitetura e implementacao backend: performance de banco de dados, indices, paginacao e prevencao de N+1."
 trigger: glob
-globs:
-  - "**/*.java"
-  - "**/*.py"
-  - "**/pom.xml"
-  - "**/requirements.txt"
-  - "**/pyproject.toml"
+globs: "**/*.java, **/*.py, **/pom.xml, **/requirements.txt, **/pyproject.toml"
 ---
 
 # Regras de Performance e Banco de Dados ⚡

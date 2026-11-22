@@ -208,3 +208,9 @@ shap_values = explainer.shap_values(X_train_transformed)
 # Explicação de predição individual (Force Plot / Waterfall)
 # shap.waterfall_plot(shap.Explanation(values=shap_values[0], base_values=explainer.expected_value, data=X_train_transformed[0], feature_names=feature_names))
 ```
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- `examples/tabular_ml_pipeline.py` — Pipeline completo anti-leakage (Feature Scaling, PCA opcional, poda de árvores, `StratifiedKFold`, `GridSearchCV` e detecção de outliers com DBSCAN).
+- `references/algorithms-and-metrics.md` — Guia de seleção de algoritmos, prevenção de overfitting/data leakage e métricas por tipo de problema.

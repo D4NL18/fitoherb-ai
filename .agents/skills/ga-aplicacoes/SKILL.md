@@ -211,3 +211,9 @@ if __name__ == "__main__":
 - [ ] **Elitismo Habilitado:** Utilização de `HallOfFame` ou elitismo manual para preservar o melhor cromossomo entre gerações sucessivas.
 - [ ] **Métricas Claras:** Otimizações financeiras monitoram simultaneamente retorno, volatilidade e Sharpe Ratio; roteamentos monitoram comprimento euclidiano e tempo de trânsito.
 - [ ] **Reprodutibilidade:** Sementes de aleatoriedade fixadas tanto no `random` da biblioteca padrão quanto no `numpy.random`.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- [`examples/tsp_genetic_algorithm.py`](examples/tsp_genetic_algorithm.py): Resolução do Caixeiro Viajante (TSP) com DEAP — representação permutacional, crossover ordenado OX (`cxOrdered`), mutação swap, elitismo (`HallOfFame`) e critério de parada por estagnação.
