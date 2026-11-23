@@ -1,7 +1,13 @@
 import re
 import yaml
+from datetime import date
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
+
+from app.domains.chat.services.company_metrics import (
+    get_fitoherb_years_label,
+    parse_founding_date,
+)
 
 COMPANY_PROFILE_PATH = Path(__file__).parent.parent / "knowledge" / "company_profile.yaml"
 
@@ -53,7 +59,11 @@ class IntentRouter:
                 return True
         return False
 
-    def route_static(self, text: str) -> Optional[Tuple[str, str]]:
+    def route_static(
+        self,
+        text: str,
+        reference_date: Optional[date] = None,
+    ) -> Optional[Tuple[str, str]]:
         """
         Retorna (reply, intent) se a pergunta puder ser respondida estaticamente,
         ou None se exigir busca no catálogo ou LLM (ex: perguntas compostas com produtos).
@@ -105,8 +115,12 @@ class IntentRouter:
             )
 
         # Quem somos / Sobre a empresa / História
-        if re.search(r"\b(quem\s+[eé]|o\s+que\s+[eé]|sobre\s+a|hist[oó]ria\s+da)\s+fitoherb\b", lower) or re.search(r"^(quem\s+s[aã]o\s+voc[eê]s|o\s+que\s+voc[eê]s\s+fazem)[\s?.]*$", lower):
-            exp = self.profile.get("years_experience", "mais de 28 anos de mercado")
+        if re.search(r"\b(quem\s+[eé](\s+a)?|o\s+que\s+[eé](\s+a)?|sobre\s+a|hist[oó]ria\s+da)\s+fitoherb\b", lower) or re.search(r"^(quem\s+s[aã]o\s+voc[eê]s|o\s+que\s+voc[eê]s\s+fazem)[\s?.]*$", lower):
+            founding_date = parse_founding_date(self.profile.get("founded_date"))
+            exp = get_fitoherb_years_label(
+                reference_date=reference_date,
+                founding_date=founding_date,
+            )
             seg = self.profile.get("segment", "distribuição de fitoterápicos, nutracêuticos e suplementação")
             cov = self.profile.get("coverage", "Bahia e Sergipe")
             return (
