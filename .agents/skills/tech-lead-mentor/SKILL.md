@@ -115,3 +115,9 @@ Inadvertida| escalou, aprendemos qual    | O que é SOLID?"             |
 - [ ] Alocação explícita de 20% da sprint para redução de dívida técnica e refatoração arquitetural.
 - [ ] Feedback estruturado segundo o modelo SBI (Situação, Comportamento, Impacto) antes de avaliações formais.
 - [ ] Métricas de time balizadas pelo framework SPACE e DORA, sem punição individual por linhas de código.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- **Referência de Liderança Técnica (4 Arquétipos, Hersey-Blanchard, Segurança Psicológica, SPACE e Dívida Técnica):** [`references/situational-leadership-and-space.md`](references/situational-leadership-and-space.md)
+- **Roteiro de 1:1 e Exemplos de Feedback SBI:** [`examples/one-on-one-and-sbi-feedback.md`](examples/one-on-one-and-sbi-feedback.md)

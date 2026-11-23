@@ -100,3 +100,10 @@ Permite que o assistente de IA faça consultas em serviços externos através do
 | **Tratamento de Exceções** | Respostas de erro retornam `isError: true` com mensagem compreensível para a IA | [ ] |
 | **Sanitização de Inputs** | Validação contra injeção de parâmetros nos argumentos recebidos do cliente | [ ] |
 | **Compatibilidade de Cliente** | Testado com sucesso em clientes padrão (Claude Desktop / Cursor) | [ ] |
+
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `examples/mcp_server_client_config.json` — Exemplo completo de configuração de `MCP Server Trigger` expondo workflows como ferramentas (com Bearer Auth), `MCP Client Tool` conectado a um `AI Agent` no N8N e bloco `mcpServers` para clientes externos.

@@ -3,26 +3,37 @@ description: "Use quando escrever, revisar ou executar testes automatizados (uni
 trigger: model_decision
 ---
 
-# Padrões Rígidos de Testes de Software 🧪
+# Padrões Rígidos de Testes de Software 🧪✅
 
-**ATENÇÃO TESTER E QA:**
-Testes escritos apenas para "atingir a meta de 80% de cobertura" e testar apenas o "caminho feliz" são código morto. Siga estas diretrizes.
+**ATENÇÃO TESTER, QA, DESENVOLVEDORES E REVIEWERS:**
+A suíte de testes automatizados é a salvaguarda de qualidade do sistema. Testes frágeis ou viciados apenas no "caminho feliz" são código morto.
 
-## 1. Estruturação AAA (Arrange, Act, Assert)
-- ❌ **Teste Bagunçado:** Não faça blocos gigantescos de código.
-- ✅ **A Solução:** Separe VISUALMENTE cada teste unitário nas 3 etapas lógicas, deixando um espaço/comentário entre elas:
-  - **Arrange (Preparar):** Instanciação das classes e Mocks.
-  - **Act (Agir):** A chamada única ao método que está sendo testado.
-  - **Assert (Validar):** As checagens (`expect`, `assertEquals`) para garantir o retorno.
+---
 
-## 2. Proibição de Falsos Positivos (Isolamento)
-- ❌ **Testes Integrados Acidentais:** Um teste unitário NUNCA deve encostar em recursos de rede, banco de dados real (mesmo que de teste na nuvem), ou ler arquivos físicos não-mockados.
-- ✅ **A Solução:** Utilize **Mocks** (e Stubs/Spies) rigorosamente para simular a camada de repositório, APIs externas ou o sistema de arquivos.
+## 1. Disciplina TDD First (Test-Driven Development)
+- ✅ **Testes Antes da Lógica:** Os testes unitários e de contrato DEVEM ser escritos antes de qualquer linha de lógica produtiva. O teste deve falhar inicialmente (Red), ser satisfeito pela implementação mínima (Green) e refatorado em seguida (Refactor).
 
-## 3. O Foco nos Casos Extremos (Edge Cases)
-- ❌ **Teste "Caminho Feliz" Exclusivo:** Um pull request será REJEITADO se a suíte de testes verificar apenas o cenário onde o usuário preencheu tudo certo.
-- ✅ **A Solução:** Você DEVE prever a quebra e criar cenários agressivos:
-  1. O que acontece se a string vier `null` ou vazia `""`?
-  2. O que acontece se a API externa demorar ou retornar `500` (Simulação de Timeout)?
-  3. O que acontece se o array passado estiver vazio `[]`?
-  4. Números negativos em cálculos financeiros ou quantitativos.
+---
+
+## 2. Estruturação AAA (Arrange, Act, Assert)
+- ❌ **Testes Monolíticos e Desordenados:** É proibido misturar instanciações, múltiplas invocações e checagens dispersas.
+- ✅ **A Separação Visual:** Divida visualmente cada teste em 3 blocos bem definidos:
+  1. **Arrange (Preparação):** Configuração de mocks, stubs e dados de entrada.
+  2. **Act (Ação):** A chamada única ao método ou endpoint sob teste.
+  3. **Assert (Verificação):** As asserções estritas dos retornos e efeitos colaterais esperados.
+
+---
+
+## 3. Isolamento Estrito & Proibição de Falsos Positivos
+- ❌ **I/O Oculto em Teste Unitário:** Testes unitários NUNCA devem acessar conexões reais de rede, banco de dados ou sistemas de arquivos sem mock.
+- ✅ **Mocks Determinísticos:** Isole dependências externas via mocks limpos (Mockito no Spring Boot / `unittest.mock` no Python / Jasmine-Jest no Angular), garantindo tempo de execução em milissegundos e reprodutibilidade independente de infraestrutura.
+
+---
+
+## 4. Foco Prioritário em Edge Cases (Cenários Extremos)
+- ❌ **Falso Sucesso (Testar Apenas Caminho Feliz):** Um Pull Request será sumariamente REJEITADO se a suíte de testes cobrir apenas entradas válidas perfeitas.
+- ✅ **Cenários Adversos Mandatórios:** Todo teste deve validar o comportamento da aplicação sob:
+  1. Parâmetros nulos (`null`/`None`), strings vazias (`""`) ou fora de padrão.
+  2. Simulação de falha de dependência externa (Timeouts, HTTP 500, conexão recusada).
+  3. Coleções vazias (`[]`) ou coleções com limite máximo de paginação.
+  4. Valores numéricos extremos, negativos e divisões por zero.

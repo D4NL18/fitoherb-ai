@@ -198,3 +198,9 @@ Expert cloud architect with deep knowledge of AWS, Azure, GCP, and emerging clou
 - **Model Registry:** Catálogo versionado com governança, aprovação de promoção de estágios (Staging -> Production) e registro de artefatos.
 - **Inference Endpoint:** Deploy com divisão de tráfego (Canary Deploy 90/10), monitoramento de data drift e concept drift com alertas automáticos para retreinamento.
 
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `references/cloud-ml-platforms-comparison.md`: Comparativo prático entre AWS SageMaker, Azure ML Studio/AutoML e GCP Vertex AI cobrindo treinamento, feature store, endpoints, pipelines e governança.
+

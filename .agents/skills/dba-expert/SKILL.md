@@ -67,3 +67,11 @@ Para organizações em escala com múltiplos times:
 - [ ] Seeds de teste 100% sintéticos em `.agents/docs/db/seeds/` sem dados pessoais reais.
 - [ ] Índices declarados para todas as chaves estrangeiras e campos de consulta frequente.
 - [ ] Migrations seguras sem instruções destrutivas (`DROP TABLE`, `TRUNCATE`) sem aprovação explícita.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+Para aprofundamento em privacidade no banco de dados, migrations sem downtime e Data Mesh, leia sob demanda:
+- **Referência Técnica:** [references/lgpd-anonymization-and-data-mesh.md](references/lgpd-anonymization-and-data-mesh.md) — Anonimização vs Pseudonimização na LGPD, travas anti-perda em migrations (Expand-and-Contract) e princípios de Data Mesh.
+- **Exemplo SQL:** [examples/safe_migration_and_lgpd_masking.sql](examples/safe_migration_and_lgpd_masking.sql) — Script SQL de migration segura com Expand-and-Contract, funções/view de mascaramento LGPD e procedure de anonimização.

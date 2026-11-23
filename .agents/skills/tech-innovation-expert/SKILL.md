@@ -119,3 +119,9 @@ Nunca gaste meses codificando um produto complexo sem antes validar se alguém r
 - [ ] Escopo do MVP reduzido estritamente ao necessário para validar a proposta de valor central.
 - [ ] Métricas acionáveis de engajamento/retenção definidas (vetando métricas de vaidade).
 - [ ] Decisão formal de "Pivotar ou Perseverar" agendada com base nos dados do ciclo Construir-Medir-Aprender.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- **Referência de Inovação (Três Horizontes, Ambidestria, Lean Startup, Design Thinking e Plataformas):** [`references/three-horizons-and-platforms.md`](references/three-horizons-and-platforms.md)
+- **Template de Experimento Lean & MVP:** [`examples/mvp-lean-experiment-template.md`](examples/mvp-lean-experiment-template.md)

@@ -288,3 +288,9 @@ def optuna_objective(trial):
 - [ ] Para NeuroEvolution: pesos inicializados em [-2, 2] com mutação Gaussiana sigma=0.1.
 - [ ] Optuna/Bayesian avaliado como alternativa quando o espaço é principalmente contínuo.
 - [ ] NSGA-II considerado quando há múltiplos objetivos conflitantes (accuracy vs latência).
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- [`examples/deap_hyperparameter_tuning.py`](examples/deap_hyperparameter_tuning.py): Otimização de hiperparâmetros de `RandomForestClassifier` com DEAP — seleção por torneio, crossover de dois pontos, mutação uniforme inteira, elitismo explícito (`HallOfFame`) e cache de fitness.

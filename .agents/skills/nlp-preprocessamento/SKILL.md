@@ -404,3 +404,9 @@ for texto, rotulo in zip(X, y):
 - [ ] Resultado do pré-processamento inspecionado manualmente antes de treinar
 - [ ] SpaCy modelo `pt_core_news_sm` instalado: `python -m spacy download pt_core_news_sm`
 - [ ] Versões de NLTK e SpaCy fixadas no `requirements.txt`
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- [`examples/ptbr_preprocessing_pipeline.py`](examples/ptbr_preprocessing_pipeline.py): Pipeline completo em PT-BR com normalização, tokenização, remoção de stop words, stemming RSLP (NLTK), lematização SpaCy (`pt_core_news_sm`) e transformador customizado para `scikit-learn` `Pipeline`.

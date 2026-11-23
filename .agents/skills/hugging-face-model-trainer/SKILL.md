@@ -75,3 +75,71 @@ These scripts demonstrate proper Hub saving, Trackio integration, checkpoint man
 - Use this skill only when the task clearly matches its upstream product or API scope.
 - Verify commands, API behavior, pricing, quotas, credentials, and deployment effects against current official documentation before making changes.
 - Do not treat generated examples as a substitute for environment-specific tests, security review, or user approval for destructive or costly actions.
+
+---
+
+## Data Preparation Pipeline & Unsloth QLoRA Recipe (Módulo 3 — Pós IA para Devs)
+
+### 1. Pipeline de Preparação de Datasets para Fine-Tuning
+1. **Coleta Estruturada (Web Scraping Ético):** Use `requests` + `BeautifulSoup` (ou `Scrapy`/`Selenium` para páginas dinâmicas) respeitando termos de uso, `robots.txt` e direitos autorais; deduplicar URLs com `set()` e tratar erros HTTP.
+2. **Geração Sintética de Outputs (LLM-as-a-Labeler):** Para reduzir o custo de rotulagem manual, gere pares `entrada -> saída esperada` com um LLM instrutor usando `response_format={"type": "json_object"}` e validação de schema.
+3. **Unificação e Formatação:** Combine dados proprietários com datasets públicos do Hugging Face (`.jsonl`) em um formato de prompt consistente (ex.: formato **Alpaca** `### Instruction / ### Input / ### Response` + `tokenizer.eos_token` ou delimitadores explícitos `[|News|] ... [|eNews|]`).
+
+### 2. Receita Prática: Fine-Tuning 4-bit QLoRA com Unsloth + `SFTTrainer`
+Fundamento: **PEFT / LoRA** congela os pesos do modelo base (16-bit/4-bit) e treina apenas matrizes adaptadoras de baixo posto inseridas nas camadas de atenção e MLP (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`), reduzindo drasticamente o consumo de VRAM.
+
+```python
+from unsloth import FastLanguageModel, is_bfloat16_supported
+from datasets import load_dataset
+from trl import SFTTrainer
+from transformers import TrainingArguments, TextStreamer
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="unsloth/llama-3-8b-bnb-4bit",
+    max_seq_length=2048,
+    dtype=None,
+    load_in_4bit=True,
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=16,
+    lora_dropout=0,
+    bias="none",
+    use_gradient_checkpointing="unsloth",
+    random_state=3407,
+)
+
+# Dataset formatado com campo "text" (Alpaca + EOS_TOKEN)
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    dataset_text_field="text",
+    max_seq_length=2048,
+    args=TrainingArguments(
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
+        warmup_steps=5,
+        max_steps=60,
+        learning_rate=2e-4,
+        fp16=not is_bfloat16_supported(),
+        bf16=is_bfloat16_supported(),
+        optim="adamw_8bit",
+        weight_decay=0.01,
+        lr_scheduler_type="linear",
+        output_dir="outputs",
+    ),
+)
+trainer.train()
+
+# Inferência otimizada com streaming e salvamento dos adaptadores LoRA
+FastLanguageModel.for_inference(model)
+model.save_pretrained("lora_model")
+tokenizer.save_pretrained("lora_model")
+```
+
+### Referência Complementar (Carregar sob Demanda)
+- `references/dataset-prep-and-unsloth-qlora.md` — Pipeline completo em 4 etapas (coleta/scraping ético, rotulagem sintética JSON mode, unificação HF + formato Alpaca) e script end-to-end Unsloth + Llama-3-8B 4-bit + `SFTTrainer` + `TextStreamer`.

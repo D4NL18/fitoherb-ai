@@ -1,12 +1,7 @@
 ---
 description: "Regras de arquitetura e implementacao backend: anti-padroes de Clean Code, SOLID e complexidade cognitiva."
 trigger: glob
-globs:
-  - "**/*.java"
-  - "**/*.py"
-  - "**/pom.xml"
-  - "**/requirements.txt"
-  - "**/pyproject.toml"
+globs: "**/*.java, **/*.py, **/pom.xml, **/requirements.txt, **/pyproject.toml"
 ---
 
 # Anti-Padrões de Clean Code 🧹

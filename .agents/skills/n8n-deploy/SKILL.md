@@ -380,3 +380,11 @@ MONITORAMENTO
 [ ] Uptime monitoring configurado (UptimeRobot, Checkly)
 [ ] Renovacao automatica de SSL testada (certbot renew --dry-run)
 ```
+
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+- `examples/docker-compose.n8n.yml` — Docker Compose pronto para produção com N8N + PostgreSQL 16, `healthcheck`, volumes persistentes (`n8n_data` e `postgres_data`), bind local seguro (`127.0.0.1:5678`) e variáveis de ambiente para webhooks/TLS e retenção de execuções.
+- `references/deploy-checklist.md` — Checklist operacional condensado de pré-deploy, rede/proxy reverso, banco de dados, backup/restore e observabilidade pós-deploy.

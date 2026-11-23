@@ -1,12 +1,7 @@
 ---
 description: "Regras de arquitetura e implementacao backend: tratamento explicito, rastreavel e semantico de erros e excecoes."
 trigger: glob
-globs:
-  - "**/*.java"
-  - "**/*.py"
-  - "**/pom.xml"
-  - "**/requirements.txt"
-  - "**/pyproject.toml"
+globs: "**/*.java, **/*.py, **/pom.xml, **/requirements.txt, **/pyproject.toml"
 ---
 
 # Tratamento de Erros e Exceções (Error Handling) 🚨

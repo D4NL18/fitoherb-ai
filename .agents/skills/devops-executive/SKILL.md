@@ -89,3 +89,11 @@ Nenhum artefato atinge o ambiente produtivo sem ser aprovado em todas as barreir
 - [ ] Feature Flags implementadas para separar deploy técnico de lançamento de negócio.
 - [ ] Métricas DORA instrumentadas e disponíveis no painel de observabilidade da engenharia.
 - [ ] Configurações de infraestrutura e deployment 100% declarativas via GitOps.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+Para aprofundamento teórico ou templates prontos de governança executiva DevOps, leia sob demanda:
+- **Referência Técnica:** [references/dora-cams-gitops-resilience.md](references/dora-cams-gitops-resilience.md) — Cultura CAMS, Métricas DORA no C-Level, Trunk-Based Development, GitOps e Engenharia de Resiliência.
+- **Exemplo / Template:** [examples/dora-executive-scorecard.md](examples/dora-executive-scorecard.md) — Template de scorecard executivo DORA para acompanhamento de squads e diretoria.
