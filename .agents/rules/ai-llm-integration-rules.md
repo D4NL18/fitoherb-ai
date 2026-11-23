@@ -21,3 +21,9 @@ A integração com provedores de IA (OpenAI, Anthropic, Gemini) requer extrema s
 - ✅ **A Solução:**
   - Para criatividade, marketing ou brainstorming: `temperature` entre `0.7` e `1.0`.
   - Para código, análise, formatação JSON estruturada e RAG: `temperature` estritamente igual a `0.0` ou `0.1`. Considere o uso de `response_format` ou `Structured Outputs` se a API permitir.
+
+## 4. Segurança e Resiliência em Agentes LLM (LangChain / LangGraph)
+- ❌ **Agente Privilegiado Lendo Dados Não-Confiáveis Diretamente:** NUNCA permita que um agente com acesso a ferramentas destrutivas/externas processe conteúdo não-confiável (e-mails, web scraping, anexos) sem isolamento.
+- ✅ **A Solução (Dual LLM + Guardrails):** Adote separação entre **Privileged LLM** (executa ferramentas sob instruções confiáveis) e **Quarantined LLM** (sumariza/extrai dados não-confiáveis sem acesso a ferramentas), com validação de entrada/saída (*Prompt & Output Check*).
+- ❌ **Loops Infinitos em Grafos / ReAct e Segredos em Tools:** É PROIBIDO criar ciclos condicionais em grafos (`LangGraph`) ou loops ReAct sem teto explícito de iterações, ou declarar chaves de API como parâmetros de `@tool` preenchíveis pelo LLM.
+- ✅ **A Solução:** Defina limite rígido de iterações/retries com **backoff exponencial** em nós de ferramentas, injete credenciais exclusivamente via variáveis de ambiente dentro da tool e registre telemetria estruturada por nó sem logar PII.

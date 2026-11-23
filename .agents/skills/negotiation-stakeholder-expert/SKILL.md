@@ -92,3 +92,9 @@ Categorize as partes interessadas para traçar a estratégia de engajamento adeq
 - [ ] Pacotes de opções de ganho mútuo apresentados no lugar de recusas secas ("não dá pra fazer").
 - [ ] Decisões respaldadas por critérios e padrões objetivos independentes (SLA, benchmarks, métricas DORA).
 - [ ] Stakeholders classificados e tratados conforme a Matriz de Mendelow (Poder x Interesse).
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- `references/harvard-batna-zopa-mendelow.md` — Guia aprofundado do Método de Harvard, BATNA/MAANA, Ponto de Reserva, ZOPA, Resolução de Conflitos (Thomas-Kilmann) e Matriz de Mendelow (Poder x Interesse).
+- `examples/negotiation-prep-canvas.md` — Template estruturado de preparação para negociações técnicas, de prazo/escopo, orçamento e contratos com fornecedores.

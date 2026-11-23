@@ -30,3 +30,12 @@ Sistemas baseados em RAG (Retrieval-Augmented Generation) operam na fronteira en
 ## 3. Controle Estrito de Alucinação (Grounding)
 - ❌ **Alucinação Factual:** É VETADO responder perguntas com suposições quando o contexto recuperado não contiver a resposta clara.
 - ✅ **A Solução:** O modelo DEVE ser orientado a declarar explicitamente: *"Não há informações suficientes nos documentos fornecidos para responder a esta solicitação."*
+
+---
+
+## 4. Citação de Fontes, Confiança e Observabilidade de RAG
+- ❌ **Respostas Sem Rastreabilidade ou Sem Fallback:** É PROIBIDO retornar respostas baseadas em RAG sem preservar metadados de origem (`source`/ID do documento) ou sem tratar recuperações de baixa confiança.
+- ✅ **A Solução:**
+  1. Exija citação explícita da fonte/ID do documento nos chunks recuperados.
+  2. Em grafos RAG (`LangGraph`), implemente **roteamento por confiança** (responder quando alta, expandir busca com limite de tentativas quando média, acionar *fallback* explícito quando baixa).
+  3. Monitore anomalias em produção (`confidence_score < 0.3`, `retrieval_time > 5.0s`, `num_documents_retrieved == 0`).

@@ -90,3 +90,11 @@ O projeto de infraestrutura deve garantir a continuidade do negócio em situaç�
 - [ ] Proteção contra OWASP Top 10 (Prepared Statements, validação de autorização de objeto BOLA).
 - [ ] Definição e teste formal de metas de RTO e RPO para a infraestrutura de dados.
 - [ ] Logs estruturados com retenção segura sem vazamento de PII ou senhas.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+
+Para aprofundamento em frameworks de defesa ou templates práticos de modelagem de ameaças, leia sob demanda:
+- **Referência Técnica:** [references/zero-trust-nist-stride-cis.md](references/zero-trust-nist-stride-cis.md) — Arquitetura Zero Trust, NIST CSF 2.0, Modelagem STRIDE, Controles CIS e Resiliência (RTO/RPO e DR).
+- **Exemplo / Template:** [examples/stride-threat-model-template.md](examples/stride-threat-model-template.md) — Template prático de análise STRIDE com fronteiras de confiança e critérios de aprovação.

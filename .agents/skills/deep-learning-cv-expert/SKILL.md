@@ -281,3 +281,9 @@ def track_video_stream(video_path: str):
     cv2.destroyAllWindows()
 ```
 
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- `examples/pytorch_cuda_transfer_learning.py` — Treinamento PyTorch com detecção dinâmica de GPU/CUDA, Transfer Learning (ResNet18) e exportação para ONNX.
+- `references/cv-architectures-and-cuda.md` — Mapa de arquiteturas de Computer Vision (classificação, detecção, segmentação, tracking, pose) e checklist CUDA.
+

@@ -89,3 +89,9 @@ Toda decisão técnica relevante deve estar conectada a um Propósito Transforma
 - [ ] Avaliação de risco de Vendor Lock-in realizada (Poder de Fornecedores de Porter).
 - [ ] Objetivos de engenharia atrelados a OKRs com metas mensuráveis (latência, disponibilidade, custo unitário).
 - [ ] Estrutura de comunicação e times alinhada aos limites dos serviços (Lei de Conway).
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- **Referência de Frameworks (SAM, 5 Forças de Porter, Cadeia de Valor, ExO & MTP):** [`references/sam-porter-exo-framework.md`](references/sam-porter-exo-framework.md)
+- **Template de Diagnóstico Estratégico de TI:** [`examples/strategic-alignment-canvas.md`](examples/strategic-alignment-canvas.md)

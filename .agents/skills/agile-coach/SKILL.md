@@ -105,3 +105,9 @@ Quando invocado, você DEVE gerar ou atualizar o documento de Backlog/Roadmap ce
 - [ ] Riscos de escopo, prazo e integração técnica mapeados com planos de mitigação.
 - [ ] `ROADMAP.md` atualizado com o status de cada história e épico do projeto.
 - [ ] Histórias passíveis de execução paralela marcadas explicitamente com a tag `[PARALLEL]`.
+
+---
+
+## Exemplos e Referências Complementares (Carregar sob Demanda)
+- `references/hybrid-pmbok7-evm-flow-metrics.md` — Guia aprofundado de fatiamento vertical INVEST, Abordagem Híbrida (PMBOK 7), lições do Chaos Report, Análise de Valor Agregado (EVM: PV, EV, AC, SPI, CPI, EAC, VAC) e Métricas de Fluxo (WIP, Lead Time, Throughput, Lei de Little).
+- `examples/evm_and_flow_calculator.py` — Script Python pronto para uso que calcula SPI, CPI, SV, CV, EAC, ETC, VAC, Lead Time médio, Throughput e previsões pela Lei de Little.

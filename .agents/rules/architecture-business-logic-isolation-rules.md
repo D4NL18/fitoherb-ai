@@ -1,12 +1,7 @@
 ---
 description: "Regras de arquitetura e implementacao backend: isolamento rigido da regra de negocio (Clean Architecture) em relacao ao framework."
 trigger: glob
-globs:
-  - "**/*.java"
-  - "**/*.py"
-  - "**/pom.xml"
-  - "**/requirements.txt"
-  - "**/pyproject.toml"
+globs: "**/*.java, **/*.py, **/pom.xml, **/requirements.txt, **/pyproject.toml"
 ---
 
 # Isolamento Rígido de Regra de Negócio (Clean Arch) 🏗️
